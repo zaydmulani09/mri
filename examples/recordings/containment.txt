@@ -1,0 +1,48 @@
+$ node C:/Users/jymul/AppData/Local/Temp/opencode/mri/dist/cli/index.js guard f:src/billing.ts cases/case-1-control.js --path . --json
+(node:14884) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+in-scope billing work completed: {"mri":"granted-symbol-stub","symbol":"fn:src/billing.ts#computeTotal","args":["[{\"priceCents\":1250},{\"priceCents\":499}]"]}
+{
+  "scope": {
+    "id": "f:src/billing.ts",
+    "type": "file",
+    "name": "billing.ts",
+    "path": "src/billing.ts"
+  },
+  "policy": "fail-closed",
+  "outcome": "executed",
+  "allowlist": {
+    "symbols": 2,
+    "files": 2,
+    "unresolved": 1,
+    "resources": {
+      "filesystem": [],
+      "network": [],
+      "environment": [],
+      "subprocess": [],
+      "categoryLevel": []
+    }
+  },
+  "scopeId": "f:src/billing.ts"
+}
+
+$ node C:/Users/jymul/AppData/Local/Temp/opencode/mri/dist/cli/index.js guard f:src/billing.ts cases/case-1-control.js --path .
+(node:17008) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+in-scope billing work completed: {"mri":"granted-symbol-stub","symbol":"fn:src/billing.ts#computeTotal","args":["[{\"priceCents\":1250},{\"priceCents\":499}]"]}
+EXECUTED cleanly within the allowlist for f:src/billing.ts
+return value: undefined
+note: calls to granted repo symbols ran against inert stubs — this verifies containment, not behavior
+allowlist: 2 symbol(s), 2 file(s) granted; 1 unresolved reference(s) were excluded fail-closed
+$ node C:/Users/jymul/AppData/Local/Temp/opencode/mri/dist/cli/index.js guard f:src/billing.ts cases/case-2-env-read.js --path .
+(node:3344) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+BLOCKED — code refused for scope f:src/billing.ts
+1 containment breach(es):
+
+  line 1 · ungranted-resource
+    attempted: require-call require("node:fs")
+    rule:      resources.filesystem -> expected at least one resources.filesystem grant
+    reason:    'node:fs' provides filesystem access but allowlist.resources.filesystem has no grants
+
+nothing was executed (fail closed). allowlist: 2 symbol(s), 2 file(s); 1 unresolved reference(s) excluded

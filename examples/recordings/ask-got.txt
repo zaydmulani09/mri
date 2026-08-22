@@ -1,0 +1,22 @@
+$ node C:/Users/jymul/AppData/Local/Temp/opencode/mri/dist/cli/index.js ask is noop dead code C:/Users/jymul/AppData/Local/Temp/opencode/got
+(node:8492) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(local model not available — showing raw result)
+
+"noop" matches multiple nodes; pick one:
+  - fn:source/core/index.ts#noop (function, source/core/index.ts)
+  - fn:source/core/timed-out.ts#noop (function, source/core/timed-out.ts)
+$ node C:/Users/jymul/AppData/Local/Temp/opencode/mri/dist/cli/index.js ask who calls calculateRetryDelay C:/Users/jymul/AppData/Local/Temp/opencode/got
+(node:11420) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(local model not available — showing raw result)
+
+fn:source/core/calculate-retry-delay.ts#calculateRetryDelay has 1 dependent(s):
+  depth 1: m:source/core/index.ts#Request._beforeError (via calls, resolved)
+(1 confirmed, 0 ambiguous-only. Confirmed counts are only as good as the resolver: dynamic dispatch is not tracked.)
+$ node C:/Users/jymul/AppData/Local/Temp/opencode/mri/dist/cli/index.js ask what is the riskiest file C:/Users/jymul/AppData/Local/Temp/opencode/got
+(node:16552) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(local model not available — showing raw result)
+
+Riskiest file: source/core/options.ts (score 42: churn 6 commits in 90d; has tests). Score is churn plus missing-test penalty — an approximation, not a measurement of code quality.
