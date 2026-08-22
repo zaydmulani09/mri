@@ -1,0 +1,97 @@
+name: mri guard
+description: >
+  Build the code graph for this repository, then enforce a fail-closed mri
+  allowlist scope against one or more code files. Blocked files emit ::error
+  annotations with the named breach rule and fail the step; clean runs write a
+  decision summary to the job summary and succeed.
+branding:
+  icon: shield
+  color: red
+
+inputs:
+  scope:
+    description: >
+      Graph node id whose allowlist is enforced. File scopes look like
+      'f:src/auth.ts'; symbol scopes like 'fn:src/auth.ts#login' or
+      'cls:src/auth.ts#Session'. The allowlist is derived entirely from
+      resolved edges in the graph — ambiguous references are excluded
+      fail-closed.
+    required: true
+  code-path:
+    description: >
+      Code file(s) to check against the scope, one path per line, relative to
+      repo-path. Use this for a fixed payload or generated file.
+    required: false
+    default: ''
+  changed-files:
+    description: >
+      Newline-separated list of files to check (e.g. the output of
+      'git diff --name-only <base> HEAD' filtered to supported extensions).
+      Relative to repo-path. Combined with code-path.
+    required: false
+    default: ''
+  repo-path:
+    description: Repository root to build the graph from.
+    required: false
+    default: '.'
+  resources-config:
+    description: >
+      Optional path to an mri resource-grant config JSON keyed by scope id,
+      for scopes that legitimately need filesystem/network/environment or
+      subprocess grants. Path is relative to repo-path.
+    required: false
+    default: ''
+  timeout-ms:
+    description: Sandbox execution timeout per checked file (in-scope work only).
+    required: false
+    default: '1000'
+  mri-ref:
+    description: Branch, tag or commit of zaydmulani09/mri to run.
+    required: false
+    default: main
+  node-version:
+    description: Node.js version used to build and run mri.
+    required: false
+    default: '22'
+
+outputs:
+  verdict:
+    description: "'clean' when every file passed, 'blocked' otherwise."
+  checked:
+    description: Number of files that were guarded.
+  blocked:
+    description: Number of files that were blocked.
+
+runs:
+  using: composite
+  steps:
+    - name: Check out mri outside the analyzed workspace
+      uses: actions/checkout@v4
+      with:
+        repository: zaydmulani09/mri
+        ref: ${{ inputs.mri-ref }}
+        path: ${{ runner.temp }}/mri-action-source
+        persist-credentials: false
+
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Build mri
+      shell: bash
+      run: npm ci --no-audit --no-fund && npm run build
+      working-directory: ${{ runner.temp }}/mri-action-source
+
+    - name: Guard scoped code
+      id: guard
+      shell: bash
+      env:
+        MRI_DIR: ${{ runner.temp }}/mri-action-source
+        REPO_PATH: ${{ inputs.repo-path }}
+        SCOPE: ${{ inputs.scope }}
+        CODE_PATH: ${{ inputs.code-path }}
+        CHANGED_FILES: ${{ inputs.changed-files }}
+        RESOURCES_CONFIG: ${{ inputs.resources-config }}
+        TIMEOUT_MS: ${{ inputs.timeout-ms }}
+      run: node "$GITHUB_ACTION_PATH/scripts/guard-runner.mjs"

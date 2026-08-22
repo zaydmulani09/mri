@@ -1,0 +1,70 @@
+name: mri analyze summary
+description: >
+  Run mri analyze against this repository and post the report — risk hotspots,
+  dead-code candidates, test-coverage estimate, and unresolved-reference
+  signals — to the GitHub Actions job summary via $GITHUB_STEP_SUMMARY.
+  Informational by design: findings carry their confidence labels and the step
+  does not fail on them.
+
+inputs:
+  repo-path:
+    description: Repository root to analyze.
+    required: false
+    default: '.'
+  top:
+    description: How many top-risk files to list.
+    required: false
+    default: '10'
+  window-days:
+    description: Git churn window in days for risk scoring.
+    required: false
+    default: '90'
+  mri-ref:
+    description: Branch, tag or commit of zaydmulani09/mri to run.
+    required: false
+    default: main
+  node-version:
+    description: Node.js version used to build and run mri.
+    required: false
+    default: '22'
+
+outputs:
+  coverage-ratio:
+    description: Estimated import-based test coverage, e.g. '0.385'.
+  dead-code-count:
+    description: Number of dead-code candidates found.
+  top-risk-file:
+    description: Path with the highest churn-plus-coverage risk score.
+  top-risk-score:
+    description: That file's score.
+
+runs:
+  using: composite
+  steps:
+    - name: Check out mri outside the analyzed workspace
+      uses: actions/checkout@v4
+      with:
+        repository: zaydmulani09/mri
+        ref: ${{ inputs.mri-ref }}
+        path: ${{ runner.temp }}/mri-action-source
+        persist-credentials: false
+
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Build mri
+      shell: bash
+      run: npm ci --no-audit --no-fund && npm run build
+      working-directory: ${{ runner.temp }}/mri-action-source
+
+    - name: Analyze repository and write job summary
+      id: analyze
+      shell: bash
+      env:
+        MRI_DIR: ${{ runner.temp }}/mri-action-source
+        REPO_PATH: ${{ inputs.repo-path }}
+        TOP: ${{ inputs.top }}
+        WINDOW_DAYS: ${{ inputs.window-days }}
+      run: node "$GITHUB_ACTION_PATH/scripts/analyze-summary.mjs"
