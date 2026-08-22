@@ -167,6 +167,9 @@ Built and working today:
   narration via a local Ollama model when available (`mri ask`)
 - Guardrail enforcement: fail-closed allowlists per graph scope plus a
   sandboxed checker (`mri guard`)
+- Local dashboard (mri serve): force-graph viewer with live blast-radius
+  highlighting (confirmed vs ambiguous kept visually separate), dead-code
+  and risk tables, fully offline
 - Showcase validation run against sindresorhus/got, demo-ready
   ([examples/reports/got-analysis.md](examples/reports/got-analysis.md))
 
