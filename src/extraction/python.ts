@@ -82,8 +82,8 @@ function recordClass(node: Node, acc: PythonExtraction): void {
           if (methodName) {
             methods.push({
               name: methodName,
-              startLine: startLine(member),
-              endLine: endLine(member),
+              startLine: startLine(definition),
+              endLine: endLine(definition),
             });
           }
         }

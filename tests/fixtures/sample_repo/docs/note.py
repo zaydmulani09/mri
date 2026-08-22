@@ -1,0 +1,2 @@
+def note():
+    return "kept"

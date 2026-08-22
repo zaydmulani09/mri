@@ -120,7 +120,7 @@ function recordClass(node: Node, exported: boolean, acc: JavaScriptExtraction): 
         case "method_definition":
         case "abstract_method_signature": {
           const methodName = member.childForFieldName("name")?.text;
-          if (methodName) {
+          if (methodName && methodName !== "constructor") {
             methods.push({
               name: methodName,
               startLine: startLine(member),
