@@ -1,8 +1,12 @@
-name: self-check
+﻿name: self-check
 
 # MRI running against its own repository. Every PR here is analyzed and
 # guarded by the tool itself, which is the proof that the GitHub Action works
 # end to end rather than a claim about it.
+#
+# Jobs using the composite actions pin mri-ref to this exact commit so each
+# PR is validated by the tool defined in it, not by whatever main happens to
+# be at run time.
 #
 # The negative-control job is load-bearing: it asserts that a payload which
 # attempts an exfiltration pattern IS blocked. If containment ever regresses
@@ -48,6 +52,7 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/mri-analyze
         with:
+          mri-ref: ${{ github.sha }}
           repo-path: .
           window-days: 90
 
@@ -60,6 +65,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/mri-guard
         with:
+          mri-ref: ${{ github.sha }}
           scope: f:src/analysis/file-kinds.ts
           code-path: examples/self-check/control-payload.js
 
@@ -72,6 +78,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/mri-guard
         with:
+          mri-ref: ${{ github.sha }}
           scope: f:src/analysis/file-kinds.ts
           changed-files: |
             examples/self-check/control-payload.js
@@ -94,7 +101,7 @@ jobs:
           if node dist/cli/index.js guard "f:src/analysis/file-kinds.ts" \
               examples/self-check/negative-control-payload.js --path . --json \
               > /tmp/guard-decision.json 2>/tmp/guard-stderr.txt; then
-            echo "::error::negative control EXECUTED cleanly — containment failed, the wall is decorative"
+            echo "::error::negative control EXECUTED cleanly -- containment failed, the wall is decorative"
             cat /tmp/guard-decision.json
             exit 1
           fi
