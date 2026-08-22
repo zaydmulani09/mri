@@ -71,10 +71,13 @@ export default function App() {
     return <div className="notice">failed to load graph data: {state.message}</div>;
   }
 
-  const totalEdges = Object.values(state.meta.counts).reduce<number>(
+  const edgesByType = state.meta.counts.edgesByType;
+  const totalEdges = Object.values(edgesByType).reduce<number>(
     (sum, n) => sum + n,
     0,
   );
+  const resolvedEdges = state.meta.counts.edgesByConfidence.resolved ?? 0;
+  const ambiguousEdges = state.meta.counts.edgesByConfidence.ambiguous ?? 0;
   const parseErrorFiles = state.meta.parseErrorFiles ?? 0;
 
   return (
@@ -89,6 +92,12 @@ export default function App() {
         </span>
         <span className="seg">
           edges <b>{totalEdges}</b>
+        </span>
+        <span className="seg">
+          resolved <b>{resolvedEdges}</b>
+        </span>
+        <span className="seg">
+          ambiguous <b>{ambiguousEdges}</b>
         </span>
         <span className="seg">
           files <b>{state.meta.fileCount}</b>

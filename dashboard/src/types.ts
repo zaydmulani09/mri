@@ -24,12 +24,19 @@ export interface GraphPayload {
   edges: GraphEdge[];
 }
 
+/** Mirrors GraphCounts from src/graph/store.ts. */
+export interface GraphCounts {
+  nodesByType: Record<string, number>;
+  edgesByType: Record<string, number>;
+  edgesByConfidence: Record<string, number>;
+}
+
 export interface MetaPayload {
   root: string;
   generatedAt: string;
   fileCount: number;
   parseErrorFiles?: number;
-  counts: Record<string, number>;
+  counts: GraphCounts;
   windowDays?: number;
 }
 
