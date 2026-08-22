@@ -199,4 +199,43 @@ describe("guardrail interceptor", () => {
     expect(result.breaches[0]?.kind).toBe("parse-failure");
     expect(result.breaches[0]?.line).toBeGreaterThan(0);
   });
+
+  it("blocks the dynamic import(variable) obfuscation shape before execution", () => {
+    const code = [
+      'const parts = ["node", "fs"];',
+      'const mod = parts.join(":");',
+      "import(mod).then((m) => {",
+      '  console.log("exfiltrated via dynamic import:", m.readFileSync(".env", "utf8"));',
+      "});",
+    ].join("\n");
+    const result = checkAndRun(code, fetchUserAllowlist);
+    if (result.outcome !== "blocked") throw new Error("expected block");
+    expect(result.breaches).toHaveLength(1);
+    const breach = result.breaches[0];
+    expect(breach?.kind).toBe("unverifiable-import");
+    expect(breach?.line).toBe(3);
+    expect(breach?.attempted).toContain("import(mod)");
+    expect(breach?.message).toContain("cannot be statically verified");
+  });
+
+  it("routes literal dynamic imports through the guarded require bridge", async () => {
+    const context = createGuardedContext(fetchUserAllowlist, {
+      modules: { "./log": { log: (message: string) => `logged:${message}` } },
+    });
+    const result = checkAndRun(
+      "import('./log').then((m) => m.log('hi'))",
+      fetchUserAllowlist,
+      context,
+    );
+    if (result.outcome !== "executed") throw new Error("expected execution");
+    expect(await (result.value as Promise<unknown>)).toBe("logged:hi");
+  });
+
+  it("converts escaping sandbox exceptions into blocked decisions, never crashes", () => {
+    const result = checkAndRun('JSON.parse("{broken")', moneyAllowlist);
+    if (result.outcome !== "blocked") throw new Error("expected block");
+    expect(result.breaches).toHaveLength(1);
+    expect(result.breaches[0]?.kind).toBe("denied-unclassifiable");
+    expect(result.breaches[0]?.message).toContain("could not complete inside the sandbox");
+  });
 });
