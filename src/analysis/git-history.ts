@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import path from "node:path";
 
 export interface FileHistory {
   commitsTotal: number;
@@ -25,6 +26,22 @@ export function collectGitHistory(
     return history;
   }
 
+  let prefixToStrip = "";
+  const topLevel = spawnSync(
+    "git",
+    ["-C", repoPath, "rev-parse", "--show-toplevel"],
+    { encoding: "utf8" },
+  );
+  if (topLevel.status === 0 && typeof topLevel.stdout === "string") {
+    const relativePrefix = path
+      .relative(path.resolve(topLevel.stdout.trim()), path.resolve(repoPath))
+      .split(path.sep)
+      .join("/");
+    if (relativePrefix.length > 0 && relativePrefix !== ".") {
+      prefixToStrip = relativePrefix + "/";
+    }
+  }
+
   const log = spawnSync(
     "git",
     ["-C", repoPath, "log", "--pretty=format:%x01%aI", "--name-only"],
@@ -48,7 +65,13 @@ export function collectGitHistory(
     if (!Number.isFinite(timestamp)) continue;
 
     for (const filePath of lines.slice(1)) {
-      const posixPath = filePath.split("\\").join("/");
+      const rawPosix = filePath.split("\\").join("/");
+      let posixPath = rawPosix;
+      if (prefixToStrip) {
+        if (!rawPosix.startsWith(prefixToStrip)) continue;
+        posixPath = rawPosix.slice(prefixToStrip.length);
+        if (posixPath.length === 0) continue;
+      }
       let entry = history.get(posixPath);
       if (!entry) {
         entry = { commitsTotal: 0, commitsInWindow: 0, lastModifiedIso: null };

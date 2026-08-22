@@ -3,7 +3,7 @@ import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import { extractRepo, type RepoExtraction } from "../extraction/index.js";
 import { buildRepoGraph, openGraph, type BuildSummary } from "../graph/index.js";
-import { computeBlastRadius } from "../analysis/index.js";
+import { computeBlastRadius, runAnalysis, type AnalysisReport } from "../analysis/index.js";
 
 const USAGE = `mri - code intelligence engine
 
@@ -11,6 +11,7 @@ Usage:
   mri extract <path> [--out <file>]
   mri build <path> [--db <file>]
   mri blast-radius <node-id> [--db <file>]
+  mri analyze <path> [--top <n>] [--window <days>] [--db <file>]
 
 Commands:
   extract       Walk the repository and write per-file symbol data as JSON.
@@ -19,12 +20,16 @@ Commands:
                 resolved vs stayed ambiguous.
   blast-radius  Everything that depends on <node-id>, by depth, with confirmed
                 vs ambiguous-only reachability kept separate.
+  analyze       Build the graph and run analysis passes: dead code candidates,
+                test coverage estimate, per-file risk scores.
 
 Options:
   -o, --out <file>    extract: write JSON dump to <file> instead of stdout
-  -d, --db <file>     SQLite database path for build/blast-radius
+  -d, --db <file>     SQLite database path for build/blast-radius/analyze
                       (default: <path>/.mri/graph.sqlite; blast-radius:
                       ./.mri/graph.sqlite)
+      --top <n>       analyze: how many top-risk files to show (default 5)
+      --window <d>    analyze: git churn window in days (default 90)
   -h, --help          Show this help
 `;
 
@@ -193,6 +198,122 @@ function runBlastRadius(options: CliOptions): number {
   return 0;
 }
 
+function extractNumericFlags(
+  argv: string[],
+): { rest: string[]; values: Record<string, number> } | null {
+  const names: Record<string, string> = {
+    "--top": "top",
+    "--window": "window",
+  };
+  const rest: string[] = [];
+  const values: Record<string, number> = {};
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === undefined) break;
+    const key = names[arg];
+    if (key) {
+      const raw = argv[i + 1];
+      const parsed = raw !== undefined ? Number(raw) : NaN;
+      if (!Number.isFinite(parsed) || parsed < 0) return null;
+      values[key] = parsed;
+      i++;
+    } else {
+      rest.push(arg);
+    }
+  }
+  return { rest, values };
+}
+
+function formatAnalysisReport(report: AnalysisReport): string {
+  const lines: string[] = [];
+  const calls = report.summary.counts.edgesByType["calls"] ?? 0;
+  const ambiguousEdges = report.summary.counts.edgesByConfidence["ambiguous"] ?? 0;
+
+  lines.push(`mri analysis: ${report.root}`);
+  lines.push(
+    `files ${report.summary.fileCount} | nodes ${
+      Object.values(report.summary.counts.nodesByType).reduce((a, b) => a + b, 0)
+    } | edges ${
+      Object.values(report.summary.counts.edgesByType).reduce((a, b) => a + b, 0)
+    } (calls ${calls}: ${calls - ambiguousEdges} resolved, ${ambiguousEdges} ambiguous)`,
+  );
+  lines.push("");
+
+  const confirmed = report.deadCode.filter(
+    (c) => c.confidence === "confirmed-unreferenced",
+  ).length;
+  lines.push(
+    `dead code candidates: ${report.deadCode.length} (${confirmed} confirmed-unreferenced, ${
+      report.deadCode.length - confirmed
+    } no-resolved-references)`,
+  );
+  for (const candidate of report.deadCode) {
+    lines.push(
+      `  ${candidate.confidence.padEnd(26)}  ${candidate.id} [${candidate.path}]${
+        candidate.note ? ` (${candidate.note})` : ""
+      }`,
+    );
+  }
+  lines.push("");
+
+  const pct =
+    report.coverage.sourceFiles.length === 0
+      ? "n/a"
+      : `${(report.coverage.coverageRatio * 100).toFixed(1)}%`;
+  lines.push(
+    `test coverage (import-based estimate): ${pct} (${
+      report.coverage.coveredFiles.length
+    }/${report.coverage.sourceFiles.length} source files)`,
+  );
+  for (const exercise of report.coverage.exercises) {
+    lines.push(`  ${exercise.testFile} -> ${exercise.covers.join(", ") || "(nothing internal)"}`);
+  }
+  lines.push("");
+
+  lines.push(`top risk files (churn window ${report.windowDays}d):`);
+  report.topRisks.forEach((risk, index) => {
+    const parts = [
+      `churn ${risk.components.churnCommits} commits (+${risk.churnPoints}pts)`,
+      risk.components.hasTests
+        ? `tested by ${risk.components.coveringTests.join(", ")} (+0pts)`
+        : "no tests found (+30pts)",
+    ];
+    if (risk.components.untracked) parts.unshift("untracked in git");
+    else if (risk.components.lastModifiedIso)
+      parts.push(`last modified ${risk.components.lastModifiedIso.slice(0, 10)}`);
+    lines.push(
+      `  ${index + 1}. ${risk.path}  score ${risk.score}  [${parts.join(" | ")}]`,
+    );
+  });
+
+  return lines.join("\n");
+}
+
+async function runAnalyze(options: CliOptions, numeric: Record<string, number>): Promise<number> {
+  if (!options.target) {
+    process.stderr.write(`mri analyze requires a target path\n\n${USAGE}`);
+    return 1;
+  }
+  const dbPath =
+    options.out ?? path.join(path.resolve(options.target), ".mri", "graph.sqlite");
+
+  let report: AnalysisReport;
+  try {
+    report = await runAnalysis(options.target, {
+      dbPath,
+      topN: numeric["top"] ?? 5,
+      windowDays: numeric["window"] ?? 90,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`error: ${message}\n`);
+    return 1;
+  }
+
+  process.stdout.write(formatAnalysisReport(report) + "\n");
+  return 0;
+}
+
 async function main(): Promise<number> {
   const argv = process.argv.slice(2);
   const command = argv[0];
@@ -200,12 +321,32 @@ async function main(): Promise<number> {
     process.stdout.write(USAGE);
     return 0;
   }
-  if (command !== "extract" && command !== "build" && command !== "blast-radius") {
+  if (
+    command !== "extract" &&
+    command !== "build" &&
+    command !== "blast-radius" &&
+    command !== "analyze"
+  ) {
     process.stderr.write(`Unknown command: ${command ?? "<none>"}\n\n${USAGE}`);
     return 1;
   }
 
   const rest = argv.slice(1);
+
+  if (command === "analyze") {
+    const numericResult = extractNumericFlags(rest);
+    if (!numericResult) {
+      process.stderr.write(`Invalid arguments\n\n${USAGE}`);
+      return 1;
+    }
+    const options = parseArgs(numericResult.rest, { "--db": "out", "-d": "out" });
+    if (!options) {
+      process.stderr.write(`Invalid arguments\n\n${USAGE}`);
+      return 1;
+    }
+    return runAnalyze(options, numericResult.values);
+  }
+
   const options =
     command === "extract"
       ? parseArgs(rest, { "--out": "out", "-o": "out" })

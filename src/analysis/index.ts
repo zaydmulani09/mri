@@ -18,6 +18,14 @@ export type {
   TestCoverageOptions,
 } from "./test-coverage.js";
 export {
+  scoreFileRisks,
+  CHURN_WEIGHT_POINTS,
+  COVERAGE_PENALTY_POINTS,
+  CHURN_CAP_COMMITS,
+} from "./risk.js";
+export type { RiskComponents, FileRisk } from "./risk.js";
+export { runAnalysis, type AnalysisReport, type AnalysisOptions } from "./analyze.js";
+export {
   DEFAULT_TEST_FILE_PATTERNS,
   isEntryFile,
   isTestFile,
