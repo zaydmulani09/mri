@@ -17,3 +17,8 @@ declare module "tree-sitter-go" {
   const go: unknown;
   export = go;
 }
+
+declare module "tree-sitter-rust" {
+  const rust: unknown;
+  export = rust;
+}

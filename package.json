@@ -1,21 +1,78 @@
 {
   "name": "mri",
   "version": "0.1.0",
-  "description": "Code intelligence engine: extracts symbols and structure from source files.",
+  "description": "Code intelligence engine: extracts symbols, calls and risk from JavaScript/TypeScript, Python and Go repos into a queryable graph.",
   "type": "module",
   "license": "MIT",
-  "engines": {
-    "node": ">=18"
+  "keywords": [
+    "code-intelligence",
+    "static-analysis",
+    "code-graph",
+    "tree-sitter",
+    "blast-radius",
+    "dead-code",
+    "risk-analysis",
+    "test-coverage"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zaydmulani09/mri.git"
   },
-  "main": "dist/extraction/index.js",
-  "types": "dist/extraction/index.d.ts",
+  "homepage": "https://github.com/zaydmulani09/mri#readme",
+  "bugs": {
+    "url": "https://github.com/zaydmulani09/mri/issues"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "files": [
+    "dist",
+    "scripts/check-install.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "./dist/extraction/index.js",
+  "types": "./dist/extraction/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/extraction/index.d.ts",
+      "import": "./dist/extraction/index.js"
+    },
+    "./extraction": {
+      "types": "./dist/extraction/index.d.ts",
+      "import": "./dist/extraction/index.js"
+    },
+    "./graph": {
+      "types": "./dist/graph/index.d.ts",
+      "import": "./dist/graph/index.js"
+    },
+    "./analysis": {
+      "types": "./dist/analysis/index.d.ts",
+      "import": "./dist/analysis/index.js"
+    },
+    "./guardrail": {
+      "types": "./dist/guardrail/index.d.ts",
+      "import": "./dist/guardrail/index.js"
+    },
+    "./cli": "./dist/cli/index.js",
+    "./package.json": "./package.json"
+  },
   "bin": {
     "mri": "dist/cli/index.js"
   },
+  "bundleDependencies": [
+    "ignore",
+    "tree-sitter",
+    "tree-sitter-go",
+    "tree-sitter-javascript",
+    "tree-sitter-python",
+    "tree-sitter-typescript"
+  ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "postinstall": "node scripts/check-install.mjs",
     "build:dashboard": "npm --prefix dashboard run build"
   },
   "dependencies": {
@@ -24,6 +81,7 @@
     "tree-sitter-go": "^0.25.0",
     "tree-sitter-javascript": "^0.25.0",
     "tree-sitter-python": "^0.25.0",
+    "tree-sitter-rust": "^0.24.0",
     "tree-sitter-typescript": "^0.23.2"
   },
   "devDependencies": {

@@ -3,6 +3,7 @@ import JavaScriptGrammar from "tree-sitter-javascript";
 import TypeScriptGrammars from "tree-sitter-typescript";
 import PythonGrammar from "tree-sitter-python";
 import GoGrammar from "tree-sitter-go";
+import RustGrammar from "tree-sitter-rust";
 import type { LanguageId } from "./languages.js";
 
 type Grammar = NonNullable<Parameters<InstanceType<typeof Parser>["setLanguage"]>[0]>;
@@ -13,6 +14,7 @@ const GRAMMARS: Record<LanguageId, Grammar> = {
   tsx: TypeScriptGrammars.tsx as Grammar,
   python: PythonGrammar as Grammar,
   go: GoGrammar as Grammar,
+  rust: RustGrammar as Grammar,
 };
 
 let sharedParser: Parser | null = null;

@@ -1,6 +1,6 @@
 import path from "node:path";
 
-export type LanguageId = "javascript" | "typescript" | "tsx" | "python" | "go";
+export type LanguageId = "javascript" | "typescript" | "tsx" | "python" | "go" | "rust";
 
 const EXTENSION_TO_LANGUAGE: Readonly<Record<string, LanguageId>> = {
   ".js": "javascript",
@@ -13,6 +13,7 @@ const EXTENSION_TO_LANGUAGE: Readonly<Record<string, LanguageId>> = {
   ".tsx": "tsx",
   ".py": "python",
   ".go": "go",
+  ".rs": "rust",
 };
 
 export function detectLanguage(filePath: string): LanguageId | null {
