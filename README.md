@@ -43,19 +43,68 @@ Requires Node.js ≥ 18.
 
 ## Usage
 
-The CLI ships four commands: `extract`, `build`, `blast-radius`, `analyze`.
+The CLI ships six commands: `extract`, `build`, `blast-radius`, `analyze`,
+`ask`, and `guard`.
 
 ```bash
 npx mri analyze /path/to/repo
 ```
 
-<!-- [example output once CLI output format is finalized] -->
+```text
+ARCHITECTURE
+  files             15   (javascript 11, python 4)
+  symbols           functions 15 | classes 5 | methods 4
+  edges             defines 23 | imports 7 | calls 12 (8 resolved / 4 ambiguous) | inherits 3
+  external modules  1   [extlib]
 
-```bash
-npx mri blast-radius fn:src/core/engine.ts#dispatch
+TECH DEBT
+  dead code candidates 3   (detail under DEAD CODE)
+
+SECURITY-RELEVANT SIGNALS (gaps in knowledge, not findings)
+  unresolved references   4   "process" x1, "formatter" x1, ...
+DEAD CODE
+  candidates 3: 2 confirmed-unreferenced, 1 no-resolved-references
+TEST COVERAGE
+  estimated coverage 38.5% (5/13 source files, import-based approximation)
 ```
 
-<!-- [example output once CLI output format is finalized] -->
+```bash
+npx mri blast-radius fn:src/api.js#fetchUser --format tree
+```
+
+```text
+fn:src/format.js#pad  (function)
+├─ ✓ fn:src/api.js#fetchUser   d1 · calls
+│  ├─ ✓ fn:src/index.js#main   d2 · calls
+└─ ✓ fn:src/format.js#money   d1 · calls
+```
+
+`mri ask` maps a natural-language question onto one of the supported graph
+queries, executes it against the real graph, and narrates only that result;
+unmappable questions are rejected rather than guessed at. When a local Ollama
+server is reachable (`MRI_OLLAMA_URL`, `MRI_OLLAMA_MODEL`) the answer is
+narrated by the model; otherwise the structured result is printed as-is.
+
+`mri guard` checks a code snippet against the fail-closed allowlist generated
+for any scope in the graph. Ungranted resources, unknown references, or
+imports outside the scope's proven reachability block execution before it
+starts:
+
+```bash
+npx mri guard fn:src/api.js#fetchUser snippet.js --path /path/to/repo
+```
+
+```text
+BLOCKED — code refused for scope fn:src/api.js#fetchUser
+1 containment breach(es):
+
+  line 1 · ungranted-resource
+    attempted: process.env.TOKEN
+    rule:      resources.environment -> expected TOKEN
+    reason:    read access to environment variable 'TOKEN' is not granted (granted variables: none)
+
+nothing was executed (fail closed). allowlist: 4 symbol(s), 3 file(s); 2 unresolved reference(s) excluded
+```
 
 Command reference: run `mri --help`.
 
@@ -82,14 +131,12 @@ Built and working today:
 - Dead-code, coverage, churn-risk, and blast-radius passes (`mri analyze`,
   `mri blast-radius`)
 - Reasoning v0: deterministic question intents over the graph, grounded
-  narration, `mri ask` (LLM seam stubbed — no model needed)
+  narration via a local Ollama model when available (`mri ask`)
+- Guardrail enforcement: fail-closed allowlists per graph scope plus a
+  sandboxed checker (`mri guard`)
 
 In flight / planned:
 
-- Guardrail enforcement: allowlist generation is committed; the
-  scan/interceptor half is landing. Culminates in a public containment demo
-  (`docs/CONTAINMENT_DEMO_SCRIPT.md`, threat claims scoped in
-  `docs/THREAT_MODEL.md`)
 - Public showcase run against a real open-source repo
   (`docs/DEMO_CANDIDATES.md` shortlist; final pick pending test runs)
 - Incremental rebuilds and watch mode
