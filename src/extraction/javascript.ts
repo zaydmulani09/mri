@@ -382,56 +382,53 @@ const REFERENCE_SKIP_SUBTREES = new Set([
 ]);
 
 function collectReferences(root: Node, acc: JavaScriptExtraction): void {
-  const localBindings = new Set<string>();
-  const noteLocalBindings = (node: Node): void => {
-    if (node.type !== "identifier") {
-      for (const child of node.namedChildren) noteLocalBindings(child);
-      return;
-    }
-    const parent = node.parent;
-    if (!parent) return;
-    if (
-      parent.type === "variable_declarator" &&
-      parent.childForFieldName("name")?.id === node.id
-    ) {
-      localBindings.add(node.text);
-      return;
-    }
-    if (
-      parent.type === "assignment_expression" &&
-      parent.childForFieldName("left")?.id === node.id
-    ) {
-      localBindings.add(node.text);
-      return;
-    }
-    if (
-      parent.type === "formal_parameters" ||
-      parent.type === "required_parameter" ||
-      parent.type === "rest_parameter" ||
-      parent.type === "pattern"
-    ) {
-      localBindings.add(node.text);
-    }
-  };
-  noteLocalBindings(root);
-
   const visit = (node: Node): void => {
     if (REFERENCE_SKIP_SUBTREES.has(node.type)) return;
     if (REFERENCE_IDENTIFIER_TYPES.has(node.type)) {
-      if (!isSymbolDeclarationName(node) && !isCalleeOrPropertyPosition(node)) {
-        if (!localBindings.has(node.text)) {
-          acc.references.push({
-            name: node.text,
-            line: startLine(node),
-            container: "<file>",
-          });
-        }
+      if (!isSymbolDeclarationName(node) && !isCalleeOrPropertyPosition(node) && !isBindingSite(node)) {
+        acc.references.push({
+          name: node.text,
+          line: startLine(node),
+          container: "<file>",
+        });
       }
       return;
     }
     for (const child of node.namedChildren) visit(child);
   };
   visit(root);
+}
+
+function isBindingSite(node: Node): boolean {
+  const parent = node.parent;
+  if (!parent) return true;
+  if (
+    parent.type === "variable_declarator" &&
+    parent.childForFieldName("name")?.id === node.id
+  ) {
+    return true;
+  }
+  if (
+    parent.type === "assignment_expression" &&
+    parent.childForFieldName("left")?.id === node.id
+  ) {
+    return true;
+  }
+  if (
+    parent.type === "arrow_function" &&
+    parent.childForFieldName("parameters")?.id === node.id
+  ) {
+    return true;
+  }
+  if (
+    parent.type === "formal_parameters" ||
+    parent.type === "required_parameter" ||
+    parent.type === "rest_parameter" ||
+    parent.type === "pattern"
+  ) {
+    return true;
+  }
+  return false;
 }
 
 const SYMBOL_DECLARATION_PARENTS = new Set([

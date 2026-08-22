@@ -205,43 +205,31 @@ const REFERENCE_SKIP_SUBTREES = new Set([
 ]);
 
 function collectReferences(root: Node, acc: PythonExtraction): void {
-  const localBindings = new Set<string>();
-  const noteLocalBindings = (node: Node): void => {
-    if (node.type !== "identifier") {
-      for (const child of node.namedChildren) noteLocalBindings(child);
-      return;
-    }
-    const parent = node.parent;
-    if (!parent) return;
-    if (
-      parent.type === "assignment" &&
-      parent.childForFieldName("left")?.id === node.id
-    ) {
-      localBindings.add(node.text);
-      return;
-    }
-    if (REFERENCE_SKIP_SUBTREES.has(parent.type)) {
-      localBindings.add(node.text);
-    }
-  };
-  noteLocalBindings(root);
-
   const visit = (node: Node): void => {
     if (REFERENCE_SKIP_SUBTREES.has(node.type)) return;
     if (node.type === "identifier") {
       if (isCalleeOrAttributePosition(node)) return;
       if (isSymbolDeclarationName(node)) return;
-      if (localBindings.has(node.text)) return;
-      acc.references.push({
-        name: node.text,
-        line: startLine(node),
-        container: "<file>",
-      });
+      if (!isBindingSite(node)) {
+        acc.references.push({
+          name: node.text,
+          line: startLine(node),
+          container: "<file>",
+        });
+      }
       return;
     }
     for (const child of node.namedChildren) visit(child);
   };
   visit(root);
+}
+
+function isBindingSite(node: Node): boolean {
+  const parent = node.parent;
+  if (!parent) return true;
+  return (
+    parent.type === "assignment" && parent.childForFieldName("left")?.id === node.id
+  );
 }
 
 function walkNamed(node: Node, visit: (n: Node) => void): void {
