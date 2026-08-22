@@ -1,25 +1,30 @@
 #!/usr/bin/env node
-import { promises as fs } from "node:fs";
+import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import { extractRepo, type RepoExtraction } from "../extraction/index.js";
-import { buildRepoGraph, type BuildSummary } from "../graph/index.js";
+import { buildRepoGraph, openGraph, type BuildSummary } from "../graph/index.js";
+import { computeBlastRadius } from "../analysis/index.js";
 
 const USAGE = `mri - code intelligence engine
 
 Usage:
   mri extract <path> [--out <file>]
   mri build <path> [--db <file>]
+  mri blast-radius <node-id> [--db <file>]
 
 Commands:
-  extract   Walk the repository and write per-file symbol data as JSON.
-  build     Extract, resolve imports/calls/inheritance, store a graph in
-            SQLite. Prints node/edge counts including how many call edges
-            resolved vs stayed ambiguous.
+  extract       Walk the repository and write per-file symbol data as JSON.
+  build         Extract, resolve imports/calls/inheritance, store a graph in
+                SQLite. Prints node/edge counts including how many call edges
+                resolved vs stayed ambiguous.
+  blast-radius  Everything that depends on <node-id>, by depth, with confirmed
+                vs ambiguous-only reachability kept separate.
 
 Options:
   -o, --out <file>    extract: write JSON dump to <file> instead of stdout
-  -d, --db <file>     build: SQLite database path
-                      (default: <path>/.mri/graph.sqlite)
+  -d, --db <file>     SQLite database path for build/blast-radius
+                      (default: <path>/.mri/graph.sqlite; blast-radius:
+                      ./.mri/graph.sqlite)
   -h, --help          Show this help
 `;
 
@@ -143,6 +148,51 @@ async function runBuild(options: CliOptions): Promise<number> {
   return 0;
 }
 
+function formatBlastRadius(result: ReturnType<typeof computeBlastRadius>): string {
+  const confirmed = result.dependents.filter((d) => d.via === "confirmed").length;
+  const ambiguousOnly = result.dependents.length - confirmed;
+  const lines = [
+    `blast radius of ${result.root.id} (${result.root.type})`,
+    `dependents: ${result.dependents.length} total (${confirmed} confirmed, ${ambiguousOnly} ambiguous-only)`,
+  ];
+  for (const dep of result.dependents) {
+    const location = dep.path ? ` [${dep.path}]` : "";
+    lines.push(
+      `  d${dep.depth}  ${dep.via.padEnd(14)}  ${dep.relation.padEnd(20)}  ${dep.id}${location}`,
+    );
+  }
+  return lines.join("\n");
+}
+
+function runBlastRadius(options: CliOptions): number {
+  if (!options.target) {
+    process.stderr.write(`mri blast-radius requires a node id\n\n${USAGE}`);
+    return 1;
+  }
+  const dbPath = options.out ?? path.join(".mri", "graph.sqlite");
+  if (!existsSync(dbPath)) {
+    process.stderr.write(`error: graph database not found at ${dbPath}\nRun \`mri build\` first.\n`);
+    return 1;
+  }
+
+  let result;
+  try {
+    const store = openGraph(dbPath);
+    try {
+      result = computeBlastRadius(store, options.target);
+    } finally {
+      store.db.close();
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`error: ${message}\n`);
+    return 1;
+  }
+
+  process.stdout.write(formatBlastRadius(result) + "\n");
+  return 0;
+}
+
 async function main(): Promise<number> {
   const argv = process.argv.slice(2);
   const command = argv[0];
@@ -150,7 +200,7 @@ async function main(): Promise<number> {
     process.stdout.write(USAGE);
     return 0;
   }
-  if (command !== "extract" && command !== "build") {
+  if (command !== "extract" && command !== "build" && command !== "blast-radius") {
     process.stderr.write(`Unknown command: ${command ?? "<none>"}\n\n${USAGE}`);
     return 1;
   }
@@ -165,7 +215,9 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  return command === "extract" ? runExtract(options) : runBuild(options);
+  if (command === "extract") return runExtract(options);
+  if (command === "build") return runBuild(options);
+  return runBlastRadius(options);
 }
 
 main()
