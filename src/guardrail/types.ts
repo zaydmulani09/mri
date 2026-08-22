@@ -26,11 +26,38 @@ export interface SubprocessGrant {
   commands: string[];
 }
 
+export type ResourceCategoryName =
+  | "filesystem"
+  | "network"
+  | "environment"
+  | "subprocess";
+
+export const RESOURCE_CATEGORY_NAMES: readonly ResourceCategoryName[] = [
+  "filesystem",
+  "network",
+  "environment",
+  "subprocess",
+];
+
+/**
+ * A category-capability grant: proof that the scope touches this resource
+ * KIND, without any specific path/host/variable/command target. Produced by
+ * deriving from resolved builtin-module imports in the graph, or declared
+ * manually in a resource config when callers want to grant a whole category.
+ */
+export interface CategoryGrant {
+  category: ResourceCategoryName;
+  /** Module import that evidenced this need, e.g. "node:fs". */
+  viaModule: string;
+  origin: "graph-import" | "config";
+}
+
 export interface ResourceGrants {
   filesystem: FilesystemGrant[];
   network: NetworkGrant[];
   environment: EnvironmentGrant[];
   subprocess: SubprocessGrant[];
+  categoryLevel?: CategoryGrant[];
 }
 
 export interface ScopedResourceConfig {
@@ -70,5 +97,11 @@ export interface Allowlist {
   symbols: SymbolGrant[];
   files: FileGrant[];
   resources: ResourceGrants;
+  /**
+   * The subset of `resources.categoryLevel` that was derived from the graph
+   * (as opposed to declared via config). Empty when the graph confirms no
+   * resource-category needs for this scope.
+   */
+  derivedResources: CategoryGrant[];
   unresolved: UnresolvedReference[];
 }

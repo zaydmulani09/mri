@@ -389,6 +389,10 @@ function fileAllowed(files: Allowlist["files"], pathLike: string): boolean {
 }
 
 function categoryGranted(allowlist: Allowlist, category: ResourceCategory): boolean {
+  const specific = allowlist.resources.categoryLevel?.some(
+    (grant) => grant.category === category,
+  );
+  if (specific) return true;
   switch (category) {
     case "filesystem":
       return allowlist.resources.filesystem.length > 0;

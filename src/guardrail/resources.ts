@@ -1,14 +1,17 @@
 import { promises as fs } from "node:fs";
 import type {
+  CategoryGrant,
   EnvironmentGrant,
   FilesystemGrant,
   NetworkGrant,
   NetworkProtocol,
   ResourceAccessMode,
+  ResourceCategoryName,
   ResourceGrants,
   ScopedResourceConfig,
   SubprocessGrant,
 } from "./types.js";
+import { RESOURCE_CATEGORY_NAMES } from "./types.js";
 
 const ACCESS_MODES: readonly ResourceAccessMode[] = ["read", "write"];
 const PROTOCOLS: readonly NetworkProtocol[] = ["http", "https", "tcp", "udp"];
@@ -17,7 +20,13 @@ const RESOURCE_CATEGORIES = ["filesystem", "network", "environment", "subprocess
 type ResourceCategory = (typeof RESOURCE_CATEGORIES)[number];
 
 export function emptyResourceGrants(): ResourceGrants {
-  return { filesystem: [], network: [], environment: [], subprocess: [] };
+  return {
+    filesystem: [],
+    network: [],
+    environment: [],
+    subprocess: [],
+    categoryLevel: [],
+  };
 }
 
 export function parseResourceConfig(raw: unknown): ScopedResourceConfig {
@@ -55,8 +64,9 @@ export async function loadResourceConfig(configPath: string): Promise<ScopedReso
 
 export function normalizeResourceGrants(raw: unknown, context: string): ResourceGrants {
   const record = requireRecord(raw, context);
+  const allowedKeys = [...RESOURCE_CATEGORIES, "categoryLevel"];
   for (const key of Object.keys(record)) {
-    if (!RESOURCE_CATEGORIES.includes(key as ResourceCategory)) {
+    if (!allowedKeys.includes(key)) {
       throw new Error(`${context}: unknown resource category '${key}'`);
     }
   }
@@ -65,7 +75,31 @@ export function normalizeResourceGrants(raw: unknown, context: string): Resource
     network: normalizeNetwork(record["network"], context),
     environment: normalizeEnvironment(record["environment"], context),
     subprocess: normalizeSubprocess(record["subprocess"], context),
+    categoryLevel: normalizeCategoryLevel(record["categoryLevel"], context),
   };
+}
+
+function normalizeCategoryLevel(raw: unknown, context: string): CategoryGrant[] {
+  if (raw === undefined) return [];
+  const entries = requireArray(raw, `${context}.categoryLevel`);
+  return entries.map((entry, i) => {
+    const ctx = `${context}.categoryLevel[${i}]`;
+    const record = requireRecord(entry, ctx);
+    requireKeys(record, ["category", "viaModule", "origin"], ctx);
+    const categoryName = requireEnum(
+      record["category"],
+      RESOURCE_CATEGORY_NAMES,
+      `${ctx}.category`,
+    ) as ResourceCategoryName;
+    const viaModule = requireNonEmptyString(record["viaModule"], `${ctx}.viaModule`);
+    let origin: CategoryGrant["origin"] = "config";
+    if (record["origin"] !== undefined) {
+      origin = requireEnum(record["origin"], ["graph-import", "config"], `${ctx}.origin`) as
+        | "graph-import"
+        | "config";
+    }
+    return { category: categoryName, viaModule, origin };
+  });
 }
 
 function normalizeFilesystem(raw: unknown, context: string): FilesystemGrant[] {

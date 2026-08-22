@@ -3,6 +3,7 @@ import { EdgeType } from "../graph/schema.js";
 import { File as fileId } from "../graph/ids.js";
 import type {
   Allowlist,
+  CategoryGrant,
   FileGrant,
   ScopedResourceConfig,
   ResourceGrants,
@@ -16,6 +17,7 @@ import {
   normalizeResourceGrants,
   parseResourceConfig,
 } from "./resources.js";
+import { deriveResourceGrants } from "./graph-resources.js";
 
 // ---------------------------------------------------------------------------
 // Ambiguous-edge policy: FAIL CLOSED.
@@ -118,12 +120,21 @@ export function generateAllowlist(
     }
   }
 
+  // Resource derivation evidence comes from the scope's seeds plus the files
+  // that contain them: imports edges are recorded on file nodes, so a plain
+  // function scope inherits its module's import statements as evidence.
+  const derivedResources = deriveResourceGrants(graphDb, [
+    ...seedIds,
+    ...files.keys(),
+  ]);
+
   return {
     policy: ALLOWLIST_POLICY,
     scope: scopeInfo(scopeNode),
     symbols: [...symbols.values()].sort((a, b) => a.nodeId.localeCompare(b.nodeId)),
     files: [...files.values()].sort((a, b) => a.path.localeCompare(b.path)),
-    resources: resolveResources(scopeNodeId, options),
+    resources: resolveResources(scopeNodeId, options, derivedResources),
+    derivedResources,
     unresolved: unresolved.sort(
       (a, b) =>
         a.sourceId.localeCompare(b.sourceId) || a.calleeText.localeCompare(b.calleeText),
@@ -167,15 +178,31 @@ function scopeInfo(node: NodeRow): ScopeInfo {
   return { id: node.id, type: node.type, name: node.name, path: node.path };
 }
 
-function resolveResources(scopeNodeId: string, options: GenerateAllowlistOptions): ResourceGrants {
+function resolveResources(
+  scopeNodeId: string,
+  options: GenerateAllowlistOptions,
+  derived: CategoryGrant[],
+): ResourceGrants {
   if (options.resources !== undefined && options.resourceConfig !== undefined) {
     throw new Error("Pass either 'resources' or 'resourceConfig', not both");
   }
+  let base: ResourceGrants;
   if (options.resources !== undefined) {
-    return normalizeResourceGrants(options.resources, "inline resources");
+    base = normalizeResourceGrants(options.resources, "inline resources");
+  } else if (options.resourceConfig !== undefined) {
+    base = options.resourceConfig.scopes[scopeNodeId] ?? emptyResourceGrants();
+  } else {
+    base = emptyResourceGrants();
   }
-  if (options.resourceConfig !== undefined) {
-    return options.resourceConfig.scopes[scopeNodeId] ?? emptyResourceGrants();
+
+  // Additive merge: config-declared grants win on identity conflicts; derived
+  // graph evidence only fills categories the config did not already cover.
+  const categoryLevel = [...(base.categoryLevel ?? [])];
+  for (const grant of derived) {
+    const covered = categoryLevel.some(
+      (existing) => existing.category === grant.category && existing.viaModule === grant.viaModule,
+    );
+    if (!covered) categoryLevel.push(grant);
   }
-  return emptyResourceGrants();
+  return { ...base, categoryLevel };
 }
