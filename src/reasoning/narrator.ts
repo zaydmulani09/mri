@@ -94,10 +94,9 @@ function renderUntested(answer: Extract<Answer, { kind: "untested" }>): string {
     .join("\n")}${more}\nThis is import proximity, not real coverage instrumentation.`;
 }
 
-// TODO(reasoning): when a local model is wired in via LlmClient, this hands
-// the model the structured JSON answer plus strict instructions to reword it
-// without adding claims. The deterministic rendering above remains the
-// fallback whenever no model is available.
+// Narration is the only place a model touches: it receives the already
+// executed structured answer plus instructions to restate it faithfully.
+// Questions never reach the model; parsing is deterministic by design.
 export async function narrateAnswer(
   answer: Answer,
   client: LlmClient,
