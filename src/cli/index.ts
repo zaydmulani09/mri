@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, promises as fs } from "node:fs";
+import { existsSync, promises as fs, watch as fsWatch } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
@@ -867,7 +867,7 @@ async function runServe(args: ServeCliArgs): Promise<number> {
   return new Promise<number>((resolve) => {
     const shutdown = (): void => {
       server.close(() => resolve(0));
-      ctx.store.close();
+      ctx.store.db.close();
     };
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
