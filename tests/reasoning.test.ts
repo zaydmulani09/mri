@@ -7,8 +7,6 @@ import { fileURLToPath } from "node:url";
 import { buildRepoGraph, openGraph, type GraphStore } from "../src/graph/index.js";
 import {
   parseQuestion,
-  parseQuestionSmart,
-  NoLocalModel,
   buildReasoningContext,
   executeQuery,
 } from "../src/reasoning/index.js";
@@ -21,7 +19,6 @@ const fixtureRoot = path.join(
 
 describe("question parser", () => {
   it("maps blast-radius phrasings to the same structured query", () => {
-    const expected = { type: "blast-radius", target: "pad" };
     for (const q of [
       "blast radius of pad",
       "what depends on pad",
@@ -33,9 +30,8 @@ describe("question parser", () => {
       const result = parseQuestion(q);
       expect(result.ok, q).toBe(true);
       if (!result.ok) continue;
-      expect(result.query).toMatchObject(expected.type === "blast-radius" ? { type: "blast-radius" } : {});
+      expect(result.query).toMatchObject({ type: "blast-radius" });
       expect((result.query as { target?: string }).target).toBeTruthy();
-      expect(result.via).toBe("deterministic");
     }
   });
 
@@ -106,11 +102,10 @@ describe("question parser", () => {
     }
   });
 
-  it("falls back to the deterministic parser when no model is available", async () => {
-    const result = await parseQuestionSmart("is ghost dead code", new NoLocalModel());
+  it("never routes questions through a model: parsing is deterministic-only", () => {
+    const result = parseQuestion("is ghost dead code");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.via).toBe("deterministic");
     expect(result.query.type).toBe("dead-code-check");
   });
 });
