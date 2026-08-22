@@ -34,6 +34,7 @@ describe("extractFile (javascript)", () => {
           { name: "register", startLine: 21, endLine: 24 },
           { name: "resolve", startLine: 26, endLine: 28 },
         ],
+        extends: [],
         startLine: 20,
         endLine: 29,
       },
@@ -41,8 +42,33 @@ describe("extractFile (javascript)", () => {
         name: "InternalCache",
         exported: false,
         methods: [],
+        extends: [],
         startLine: 31,
         endLine: 31,
+      },
+    ]);
+
+    expect(result.calls).toEqual([
+      {
+        kind: "member",
+        object: "path",
+        name: "join",
+        line: 7,
+        container: "formatPath",
+      },
+      {
+        kind: "member",
+        object: "this.factories",
+        name: "set",
+        line: 22,
+        container: "ServiceRegistry.register",
+      },
+      {
+        kind: "member",
+        object: "this.factories",
+        name: "get",
+        line: 27,
+        container: "ServiceRegistry.resolve",
       },
     ]);
 

@@ -31,6 +31,7 @@ describe("extractFile (typescript)", () => {
           { name: "find", startLine: 16, endLine: 18 },
           { name: "save", startLine: 20, endLine: 22 },
         ],
+        extends: [],
         startLine: 11,
         endLine: 23,
       },
@@ -41,8 +42,26 @@ describe("extractFile (typescript)", () => {
           { name: "fetch", startLine: 26, endLine: 26 },
           { name: "wrap", startLine: 28, endLine: 30 },
         ],
+        extends: [],
         startLine: 25,
         endLine: 31,
+      },
+    ]);
+
+    expect(result.calls).toEqual([
+      {
+        kind: "member",
+        object: "this.cache",
+        name: "get",
+        line: 17,
+        container: "UserService.find",
+      },
+      {
+        kind: "member",
+        object: "this.cache",
+        name: "set",
+        line: 21,
+        container: "UserService.save",
       },
     ]);
 

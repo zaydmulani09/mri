@@ -33,6 +33,7 @@ describe("extractFile (python)", () => {
           { name: "run", startLine: 10, endLine: 11 },
           { name: "describe", startLine: 14, endLine: 15 },
         ],
+        extends: [],
         startLine: 7,
         endLine: 15,
       },
@@ -43,10 +44,13 @@ describe("extractFile (python)", () => {
           { name: "__init__", startLine: 19, endLine: 20 },
           { name: "spawn", startLine: 22, endLine: 23 },
         ],
+        extends: [],
         startLine: 18,
         endLine: 23,
       },
     ]);
+
+    expect(result.calls).toEqual([]);
 
     expect(result.imports).toEqual([
       {

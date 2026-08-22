@@ -1,5 +1,7 @@
 import type Parser from "tree-sitter";
 import type {
+  CallSite,
+  CalleeKind,
   ClassSymbol,
   ExportSymbol,
   FunctionSymbol,
@@ -14,10 +16,17 @@ export interface PythonExtraction {
   classes: ClassSymbol[];
   imports: ImportSymbol[];
   exports: ExportSymbol[];
+  calls: CallSite[];
 }
 
 export function extractPython(root: Node): PythonExtraction {
-  const acc: PythonExtraction = { functions: [], classes: [], imports: [], exports: [] };
+  const acc: PythonExtraction = {
+    functions: [],
+    classes: [],
+    imports: [],
+    exports: [],
+    calls: [],
+  };
   for (const child of root.namedChildren) {
     visitTopLevelStatement(child, acc);
   }
@@ -58,34 +67,33 @@ function recordFunction(node: Node, acc: PythonExtraction): void {
     startLine: startLine(node),
     endLine: endLine(node),
   });
+  collectCalls(node, name, acc);
 }
 
 function recordClass(node: Node, acc: PythonExtraction): void {
   const className = node.childForFieldName("name")?.text ?? "<anonymous>";
   const methods: MethodSymbol[] = [];
+  const superClasses = collectSuperClasses(node);
   const body = node.childForFieldName("body");
   if (body && body.type === "block") {
     for (const member of body.namedChildren) {
-      if (member.type === "function_definition") {
-        const methodName = member.childForFieldName("name")?.text;
+      const definition =
+        member.type === "decorated_definition"
+          ? member.childForFieldName("definition")
+          : member;
+      if (definition?.type === "function_definition") {
+        const methodName = definition.childForFieldName("name")?.text;
         if (methodName) {
           methods.push({
             name: methodName,
-            startLine: startLine(member),
-            endLine: endLine(member),
+            startLine: startLine(definition),
+            endLine: endLine(definition),
           });
-        }
-      } else if (member.type === "decorated_definition") {
-        const definition = member.childForFieldName("definition");
-        if (definition?.type === "function_definition") {
-          const methodName = definition.childForFieldName("name")?.text;
-          if (methodName) {
-            methods.push({
-              name: methodName,
-              startLine: startLine(definition),
-              endLine: endLine(definition),
-            });
-          }
+          collectCalls(
+            definition,
+            methodName === "__init__" ? className : `${className}.${methodName}`,
+            acc,
+          );
         }
       }
     }
@@ -94,9 +102,21 @@ function recordClass(node: Node, acc: PythonExtraction): void {
     name: className,
     exported: false,
     methods,
+    extends: superClasses,
     startLine: startLine(node),
     endLine: endLine(node),
   });
+}
+
+function collectSuperClasses(classNode: Node): string[] {
+  const superclasses = classNode.childForFieldName("superclasses");
+  if (!superclasses) return [];
+  const bases: string[] = [];
+  for (const arg of superclasses.namedChildren) {
+    if (arg.type === "keyword_argument") continue;
+    bases.push(arg.text);
+  }
+  return bases;
 }
 
 function recordPlainImports(statement: Node, acc: PythonExtraction): void {
@@ -156,4 +176,51 @@ function startLine(node: Node): number {
 
 function endLine(node: Node): number {
   return node.endPosition.row + 1;
+}
+
+function collectCalls(root: Node, container: string, acc: PythonExtraction): void {
+  walkNamed(root, (node) => {
+    if (node.type !== "call") return;
+    const site = classifyCallee(node.childForFieldName("function"));
+    if (site) {
+      acc.calls.push({ ...site, line: startLine(node), container });
+    }
+  });
+}
+
+function walkNamed(node: Node, visit: (n: Node) => void): void {
+  for (const child of node.namedChildren) {
+    visit(child);
+    walkNamed(child, visit);
+  }
+}
+
+function classifyCallee(
+  callee: Node | null,
+): { kind: CalleeKind; object: string | null; name: string } | null {
+  if (!callee) return null;
+  switch (callee.type) {
+    case "identifier":
+      return { kind: "plain", object: null, name: callee.text };
+    case "attribute": {
+      const property = callee.childForFieldName("attribute")?.text;
+      const object = callee.childForFieldName("object");
+      if (!property || !object) return null;
+      if (object.type === "identifier" && object.text === "self") {
+        return { kind: "self", object: null, name: property };
+      }
+      if (
+        object.type === "call" &&
+        object.childForFieldName("function")?.text === "super"
+      ) {
+        return { kind: "super", object: null, name: property };
+      }
+      if (object.type === "identifier" && object.text === "cls") {
+        return { kind: "self", object: null, name: property };
+      }
+      return { kind: "member", object: object.text, name: property };
+    }
+    default:
+      return null;
+  }
 }

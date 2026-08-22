@@ -1,5 +1,7 @@
 import type Parser from "tree-sitter";
 import type {
+  CallSite,
+  CalleeKind,
   ClassSymbol,
   ExportSymbol,
   FunctionSymbol,
@@ -14,6 +16,7 @@ export interface JavaScriptExtraction {
   classes: ClassSymbol[];
   imports: ImportSymbol[];
   exports: ExportSymbol[];
+  calls: CallSite[];
 }
 
 const FUNCTION_VALUE_TYPES = new Set([
@@ -23,7 +26,13 @@ const FUNCTION_VALUE_TYPES = new Set([
 ]);
 
 export function extractJavaScript(root: Node): JavaScriptExtraction {
-  const acc: JavaScriptExtraction = { functions: [], classes: [], imports: [], exports: [] };
+  const acc: JavaScriptExtraction = {
+    functions: [],
+    classes: [],
+    imports: [],
+    exports: [],
+    calls: [],
+  };
   for (const child of root.namedChildren) {
     visitTopLevelStatement(child, acc);
   }
@@ -108,11 +117,13 @@ function recordFunction(
     endLine: endLine(node),
   };
   acc.functions.push(fn);
+  collectCalls(node, name, acc);
 }
 
 function recordClass(node: Node, exported: boolean, acc: JavaScriptExtraction): void {
   const className = node.childForFieldName("name")?.text ?? "<anonymous>";
   const methods: MethodSymbol[] = [];
+  const superClasses = collectSuperClasses(node);
   const body = node.childForFieldName("body");
   if (body) {
     for (const member of body.namedChildren) {
@@ -127,6 +138,13 @@ function recordClass(node: Node, exported: boolean, acc: JavaScriptExtraction): 
               endLine: endLine(member),
             });
           }
+          if (methodName) {
+            collectCalls(
+              member,
+              methodName === "constructor" ? className : `${className}.${methodName}`,
+              acc,
+            );
+          }
           break;
         }
         case "field_definition":
@@ -140,6 +158,7 @@ function recordClass(node: Node, exported: boolean, acc: JavaScriptExtraction): 
               startLine: startLine(member),
               endLine: endLine(member),
             });
+            collectCalls(value, `${className}.${prop.text}`, acc);
           }
           break;
         }
@@ -152,9 +171,35 @@ function recordClass(node: Node, exported: boolean, acc: JavaScriptExtraction): 
     name: className,
     exported,
     methods,
+    extends: superClasses,
     startLine: startLine(node),
     endLine: endLine(node),
   });
+}
+
+function collectSuperClasses(classNode: Node): string[] {
+  const heritage = classNode.namedChildren.find(
+    (child) => child.type === "class_heritage",
+  );
+  if (!heritage) return [];
+  const bases: string[] = [];
+  for (const child of heritage.namedChildren) {
+    if (child.type === "extends_clause" || child.type === "superclass") {
+      const value = child.childForFieldName("value");
+      if (value) bases.push(baseText(value));
+    } else if (
+      child.type === "identifier" ||
+      child.type === "type_identifier" ||
+      child.type === "member_expression"
+    ) {
+      bases.push(baseText(child));
+    }
+  }
+  return bases;
+}
+
+function baseText(expr: Node): string {
+  return expr.text;
 }
 
 function recordImport(statement: Node, acc: JavaScriptExtraction): void {
@@ -297,6 +342,55 @@ function startLine(node: Node): number {
 
 function endLine(node: Node): number {
   return node.endPosition.row + 1;
+}
+
+function collectCalls(root: Node, container: string, acc: JavaScriptExtraction): void {
+  walkNamed(root, (node) => {
+    if (node.type === "call_expression") {
+      const callee = node.childForFieldName("function");
+      const site = classifyCallee(callee);
+      if (site) {
+        acc.calls.push({ ...site, line: startLine(node), container });
+      }
+    } else if (node.type === "new_expression") {
+      const ctor = node.childForFieldName("constructor");
+      const site = classifyCallee(ctor);
+      if (site) {
+        acc.calls.push({ ...site, line: startLine(node), container });
+      }
+    }
+  });
+}
+
+function walkNamed(node: Node, visit: (n: Node) => void): void {
+  for (const child of node.namedChildren) {
+    visit(child);
+    walkNamed(child, visit);
+  }
+}
+
+function classifyCallee(
+  callee: Node | null,
+): { kind: CalleeKind; object: string | null; name: string } | null {
+  if (!callee) return null;
+  switch (callee.type) {
+    case "identifier":
+      return { kind: "plain", object: null, name: callee.text };
+    case "member_expression": {
+      const property = callee.childForFieldName("property")?.text;
+      const object = callee.childForFieldName("object");
+      if (!property || !object) return null;
+      if (object.type === "identifier" && object.text === "this") {
+        return { kind: "this", object: null, name: property };
+      }
+      if (!object.isNamed && object.type === "super") {
+        return { kind: "super", object: null, name: property };
+      }
+      return { kind: "member", object: object.text, name: property };
+    }
+    default:
+      return null;
+  }
 }
 
 function stripQuotes(raw: string): string {

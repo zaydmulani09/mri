@@ -15,6 +15,17 @@ export interface MethodSymbol extends SymbolSpan {}
 export interface ClassSymbol extends SymbolSpan {
   exported: boolean;
   methods: MethodSymbol[];
+  extends: string[];
+}
+
+export type CalleeKind = "plain" | "member" | "this" | "self" | "super";
+
+export interface CallSite {
+  kind: CalleeKind;
+  object: string | null;
+  name: string;
+  line: number;
+  container: string;
 }
 
 export interface ImportSymbol {
@@ -41,4 +52,5 @@ export interface FileSymbols {
   classes: ClassSymbol[];
   imports: ImportSymbol[];
   exports: ExportSymbol[];
+  calls: CallSite[];
 }

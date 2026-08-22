@@ -12,4 +12,6 @@ export type {
   ExportSymbol,
   ExportKind,
   SymbolSpan,
+  CallSite,
+  CalleeKind,
 } from "./types.js";
