@@ -10,6 +10,13 @@ export type {
   BlastRadiusResult,
   BlastConfidence,
 } from "./blast-radius.js";
+export { collectGitHistory } from "./git-history.js";
+export type { FileHistory, GitHistory } from "./git-history.js";
+export { mapTestCoverage } from "./test-coverage.js";
+export type {
+  TestCoverageResult,
+  TestCoverageOptions,
+} from "./test-coverage.js";
 export {
   DEFAULT_TEST_FILE_PATTERNS,
   isEntryFile,
