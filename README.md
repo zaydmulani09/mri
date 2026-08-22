@@ -30,16 +30,43 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## Installation
 
-From source (no published package yet):
+**Requires Node.js ≥ 22.5** (mri stores its code graph in `node:sqlite`,
+which ships with Node from 22.5). The installer verifies Node, SQLite and the
+tree-sitter native bindings up front and prints actionable instructions if
+anything is missing.
+
+### From npm (after publish)
 
 ```bash
-git clone <this-repo>
+npm install -g mri
+mri --help
+```
+
+Or use it without installing globally:
+
+```bash
+npx mri analyze /path/to/repo
+```
+
+The npm package bundles its tree-sitter native dependencies, so a plain
+`npm install mri` works out of the box on platforms with prebuilt binaries
+(win32/x64, darwin arm64+x64, linux arm64+x64) — no compiler toolchain needed.
+
+### From source
+
+```bash
+git clone https://github.com/zaydmulani09/mri
 cd mri
 npm install
 npm run build
+node dist/cli/index.js --help
 ```
 
-Requires Node.js ≥ 18.
+If tree-sitter native bindings ever break after a Node upgrade:
+
+```bash
+npm rebuild tree-sitter tree-sitter-javascript tree-sitter-typescript tree-sitter-python tree-sitter-go tree-sitter-rust
+```
 
 ## Usage
 
