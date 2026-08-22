@@ -25,6 +25,7 @@ import {
   renderAnswer,
 } from "../reasoning/index.js";
 import { runGuardCommand } from "./guard-command.js";
+import { checkRuntime } from "./env-check.js";
 import {
   createGraphServer,
   openBrowser,
@@ -892,6 +893,12 @@ async function main(): Promise<number> {
     command !== "serve"
   ) {
     process.stderr.write(`Unknown command: ${command ?? "<none>"}\n\n${USAGE}`);
+    return 1;
+  }
+
+  const runtime = await checkRuntime(command);
+  if (!runtime.ok) {
+    process.stderr.write(`error: ${runtime.message}\n`);
     return 1;
   }
 
