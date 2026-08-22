@@ -20,15 +20,15 @@ describe("extractFile (python)", () => {
     expect(result.hasParseErrors).toBe(false);
 
     expect(result.functions).toEqual([
-      { name: "setup_environ", exported: false, startLine: 26, endLine: 27 },
-      { name: "drain", exported: false, startLine: 30, endLine: 31 },
-      { name: "_private_helper", exported: false, startLine: 34, endLine: 35 },
+      { name: "setup_environ", exported: true, startLine: 26, endLine: 27 },
+      { name: "drain", exported: true, startLine: 30, endLine: 31 },
+      { name: "_private_helper", exported: true, startLine: 34, endLine: 35 },
     ]);
 
     expect(result.classes).toEqual([
       {
         name: "Worker",
-        exported: false,
+        exported: true,
         methods: [
           { name: "run", startLine: 10, endLine: 11 },
           { name: "describe", startLine: 14, endLine: 15 },
@@ -39,7 +39,7 @@ describe("extractFile (python)", () => {
       },
       {
         name: "WorkerPool",
-        exported: false,
+        exported: true,
         methods: [
           { name: "__init__", startLine: 19, endLine: 20 },
           { name: "spawn", startLine: 22, endLine: 23 },
