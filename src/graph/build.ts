@@ -28,6 +28,7 @@ export async function buildRepoGraph(
   const root = path.resolve(repoPath);
   const extraction = await extractRepo(root);
 
+  await fs.mkdir(path.dirname(path.resolve(dbPath)), { recursive: true });
   await fs.rm(path.resolve(dbPath), { force: true });
 
   const store = openGraph(dbPath);
@@ -170,7 +171,7 @@ function writeReferenceEdges(store: GraphStore, files: FileSymbols[]): void {
       const targetId = localSymbols.get(reference.name);
       if (!targetId) continue;
 
-      const srcId = containerNodeId(posixPath, reference.container) ?? fileNodeId;
+      const srcId = containerNodeId(store, posixPath, reference.container) ?? fileNodeId;
       const dedupeKey = `${srcId}->${targetId}`;
       if (srcId === targetId || seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
@@ -185,14 +186,22 @@ function writeReferenceEdges(store: GraphStore, files: FileSymbols[]): void {
   }
 }
 
-function containerNodeId(path: string, container: string): string | null {
+function containerNodeId(
+  store: GraphStore,
+  path: string,
+  container: string,
+): string | null {
+  if (container === "<file>" || container.length === 0) return null;
   const dotIndex = container.indexOf(".");
+  let candidate: string;
   if (dotIndex !== -1) {
     const className = container.slice(0, dotIndex);
     const methodName = container.slice(dotIndex + 1);
-    return methodId(path, className, methodName);
+    candidate = methodId(path, className, methodName);
+  } else {
+    candidate = functionId(path, container);
   }
-  return functionId(path, container);
+  return store.getNode(candidate) ? candidate : fileId.build(path);
 }
 
 async function resolveAndWriteImports(
