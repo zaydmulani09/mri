@@ -154,6 +154,7 @@ describe("guardrail allowlist generation", () => {
         network: [{ host: "api.example.com", port: 443 }],
         environment: [{ name: "API_TOKEN", access: "read" }],
         subprocess: [{ commands: ["git"] }],
+        categoryLevel: [],
       });
 
       const unlisted = generateAllowlist("fn:src/format.js#money", store, {
