@@ -13,6 +13,20 @@ function fixture(...segments: string[]): string {
 }
 
 describe("extractFile (typescript)", () => {
+  it("parses TS 5.0 export-type-star syntax without parse errors", async () => {
+    const result = await extractFile(fixture("typescript", "type-exports.ts"));
+
+    expect(result.hasParseErrors).toBe(false);
+    expect(result.exports).toEqual([
+      { kind: "all", names: [], line: 3 },
+      { kind: "all", names: ["ns"], line: 4 },
+      { kind: "named", names: ["sendRequest"], line: 6 },
+      { kind: "named", names: ["Requester"], line: 10 },
+    ]);
+    expect(result.functions.map((f) => f.name)).toContain("sendRequest");
+    expect(result.classes.map((c) => c.name)).toContain("Requester");
+  }, 30000);
+
   it("extracts functions, classes and methods from a TS module", async () => {
     const result = await extractFile(fixture("typescript", "models.ts"));
 
