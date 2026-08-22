@@ -1,4 +1,10 @@
-import { existsSync, statSync } from "node:fs";
+import {
+  existsSync,
+  promises as fs,
+  readFileSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
 import path from "node:path";
 import type { LanguageId } from "../extraction/languages.js";
 
@@ -109,7 +115,62 @@ export function createImportResolver(rootDir: string): ImportResolver {
       }
       return resolvePythonModule(specifier, null, specifier);
     }
+    if (language === "go") {
+      return resolveGoPackage(specifier);
+    }
     return resolveJs(importerPath, specifier);
+  }
+
+  // Go imports are module-path based: a specifier is internal only when it
+  // equals or extends the module path declared in <root>/go.mod, and the
+  // corresponding package directory actually contains Go sources. Anything
+  // else is external - there is no heuristic fallback to guess from.
+  let goModulePathCache: string | null | undefined;
+
+  function goModulePath(): string | null {
+    if (goModulePathCache !== undefined) return goModulePathCache;
+    goModulePathCache = null;
+    try {
+      const text = readFileSync(path.join(root, "go.mod"), "utf8");
+      const match = /^\s*module\s+(\S+)\s*$/m.exec(text);
+      if (match?.[1]) {
+        goModulePathCache = match[1].replace(/^"|"$/g, "");
+      }
+    } catch {
+      // no go.mod: every import stays external
+    }
+    return goModulePathCache;
+  }
+
+  function resolveGoPackage(specifier: string): ResolvedImport {
+    const modulePath = goModulePath();
+    if (modulePath === null) return { specifier, status: "external" };
+    if (specifier !== modulePath && !specifier.startsWith(modulePath + "/")) {
+      return { specifier, status: "external" };
+    }
+
+    const relDir = specifier.slice(modulePath.length).replace(/^\//, "");
+    const packageDir = relDir.length === 0 ? root : path.join(root, ...relDir.split("/"));
+    if (!isDir(packageDir)) return { specifier, status: "external" };
+
+    // An import names a whole package; the graph's file-level model picks a
+    // deterministic representative file (first .go file in sorted order) as
+    // the edge destination.
+    try {
+      const entries = readdirSync(packageDir, { withFileTypes: true });
+      const firstGoFile = entries
+        .filter((entry) => entry.isFile() && entry.name.endsWith(".go"))
+        .map((entry) => entry.name)
+        .sort()[0];
+      if (!firstGoFile) return { specifier, status: "external" };
+      return {
+        specifier,
+        status: "internal",
+        path: `${relDir.length === 0 ? firstGoFile : `${relDir}/${firstGoFile}`}`,
+      };
+    } catch {
+      return { specifier, status: "external" };
+    }
   }
 
   return { resolve };
