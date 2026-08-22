@@ -1,0 +1,9 @@
+{
+  "title": "mri guard - in-scope work flows, escapes fail closed (sandbox-demo fixture)",
+  "width": 110, "height": 34, "lineDelay": 1800,
+  "steps": [
+    { "cmd": ["node", "C:/Users/jymul/AppData/Local/Temp/opencode/mri/dist/cli/index.js", "guard", "f:src/billing.ts", "case-1-control.js", "--path", "sandbox-demo", "--json"], "cwd": "C:/Users/jymul/AppData/Local/Temp/opencode", "pauseBefore": 2500 },
+    { "cmd": ["node", "C:/Users/jymul/AppData/Local/Temp/opencode/mri/dist/cli/index.js", "guard", "f:src/billing.ts", "case-1-control.js", "--path", "sandbox-demo"], "cwd": "C:/Users/jymul/AppData/Local/Temp/opencode", "pauseBefore": 5000 },
+    { "cmd": ["node", "C:/Users/jymul/AppData/Local/Temp/opencode/mri/dist/cli/index.js", "guard", "f:src/billing.ts", "case-2-env-read.js", "--path", "sandbox-demo"], "cwd": "C:/Users/jymul/AppData/Local/Temp/opencode", "pauseBefore": 6000 }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "title": "mri analyze - sindresorhus/got @ e3924aa",
+  "width": 110, "height": 34, "lineDelay": 300,
+  "steps": [
+    { "cmd": ["node", "C:/Users/jymul/AppData/Local/Temp/opencode/mri/dist/cli/index.js", "analyze", "C:/Users/jymul/AppData/Local/Temp/opencode/got"], "pauseBefore": 800 }
+  ]
+}

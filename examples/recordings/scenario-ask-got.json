@@ -1,0 +1,9 @@
+{
+  "title": "mri ask - ambiguity refused, answers grounded in the graph (got @ e3924aa)",
+  "width": 110, "height": 30, "lineDelay": 1200,
+  "steps": [
+    { "cmd": ["node", "C:/Users/jymul/AppData/Local/Temp/opencode/mri/dist/cli/index.js", "ask", "is noop dead code", "C:/Users/jymul/AppData/Local/Temp/opencode/got"], "pauseBefore": 3000 },
+    { "cmd": ["node", "C:/Users/jymul/AppData/Local/Temp/opencode/mri/dist/cli/index.js", "ask", "who calls calculateRetryDelay", "C:/Users/jymul/AppData/Local/Temp/opencode/got"], "pauseBefore": 4000 },
+    { "cmd": ["node", "C:/Users/jymul/AppData/Local/Temp/opencode/mri/dist/cli/index.js", "ask", "what is the riskiest file", "C:/Users/jymul/AppData/Local/Temp/opencode/got"], "pauseBefore": 4000 }
+  ]
+}
