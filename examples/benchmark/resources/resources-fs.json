@@ -1,0 +1,10 @@
+{
+  "scopes": {
+    "f:src/billing.ts": {
+      "filesystem": [{ "path": ".", "access": ["read"] }],
+      "network": [],
+      "environment": [],
+      "subprocess": []
+    }
+  }
+}

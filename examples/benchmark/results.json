@@ -1,0 +1,470 @@
+[
+  {
+    "id": "a01",
+    "suite": "A",
+    "category": "bug-fix call",
+    "file": "suites/suite-a/a01-bugfix-call.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "recomputed total: {\"mri\":\"granted-symbol-stub\",\"symbol\":\"fn:src/billing.ts#computeTotal\",\"args\":[\"[{\\\"priceCents\\\":2500},{\\\"priceCents\\\":499}]\"]}\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:22420) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a02",
+    "suite": "A",
+    "category": "small feature (local helper)",
+    "file": "suites/suite-a/a02-feature-discount.js",
+    "verdict": "BLOCKED",
+    "detail": "unknown-reference, unknown-reference, unknown-reference, unknown-reference [symbols; symbols; symbols; symbols]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 2,\n      \"attempted\": \"reference to 'items'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"items\"\n      },\n      \"message\": \"code references 'items' at line 2, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    },\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 2,\n      \"attempted\": \"reference to 'percent'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"percent\"\n      },\n      \"message\": \"code references 'percent' at line 2, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    },\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 3,\n      \"attempted\": \"reference to 'items'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"items\"\n      },\n      \"message\": \"code references 'items' at line 3, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    },\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 5,\n      \"attempted\": \"reference to 'percent'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"percent\"\n      },\n      \"message\": \"code references 'percent' at line 5, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:13988) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a03",
+    "suite": "A",
+    "category": "refactor (extract helper)",
+    "file": "suites/suite-a/a03-refactor-extract.js",
+    "verdict": "BLOCKED",
+    "detail": "unknown-reference, unknown-reference, unknown-reference [symbols; symbols; symbols]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 2,\n      \"attempted\": \"reference to 'item'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"item\"\n      },\n      \"message\": \"code references 'item' at line 2, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    },\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 3,\n      \"attempted\": \"reference to 'item'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"item\"\n      },\n      \"message\": \"code references 'item' at line 3, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    },\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 4,\n      \"attempted\": \"reference to 'item'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"item\"\n      },\n      \"message\": \"code references 'item' at line 4, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:17304) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a04",
+    "suite": "A",
+    "category": "pure data transform",
+    "file": "suites/suite-a/a04-data-transform.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "quantity sum: 150 avg: 30\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:19148) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a05",
+    "suite": "A",
+    "category": "Map/Set aggregation",
+    "file": "suites/suite-a/a05-aggregation.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "units: 12 unique SKUs: 2\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:8180) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a06",
+    "suite": "A",
+    "category": "Date/string formatting",
+    "file": "suites/suite-a/a06-date-format.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "INV-2026-08-22-100\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:20512) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a07",
+    "suite": "A",
+    "category": "error handling around granted call",
+    "file": "suites/suite-a/a07-error-handling.js",
+    "verdict": "BLOCKED",
+    "detail": "unknown-reference, unknown-reference [symbols; symbols]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 5,\n      \"attempted\": \"reference to 'error'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"error\"\n      },\n      \"message\": \"code references 'error' at line 5, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    },\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 6,\n      \"attempted\": \"reference to 'error'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"error\"\n      },\n      \"message\": \"code references 'error' at line 6, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:6536) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a08",
+    "suite": "A",
+    "category": "local class composition",
+    "file": "suites/suite-a/a08-local-class.js",
+    "verdict": "BLOCKED",
+    "detail": "unknown-reference, unknown-reference [symbols; symbols]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 3,\n      \"attempted\": \"reference to 'items'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"items\"\n      },\n      \"message\": \"code references 'items' at line 3, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    },\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 4,\n      \"attempted\": \"reference to 'items'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"items\"\n      },\n      \"message\": \"code references 'items' at line 4, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:24596) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a09",
+    "suite": "A",
+    "category": "template-literal report",
+    "file": "suites/suite-a/a09-report-template.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "== daily report ==\nweb: {\"mri\":\"granted-symbol-stub\",\"symbol\":\"fn:src/billing.ts#computeTotal\",\"args\":[\"[{\\\"priceCents\\\":1500}]\"]}\nmobile: {\"mri\":\"granted-symbol-stub\",\"symbol\":\"fn:src/billing.ts#computeTotal\",\"args\":[\"[{\\\"priceCents\\\":2200}]\"]}\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:30864) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a10",
+    "suite": "A",
+    "category": "RegExp validation",
+    "file": "suites/suite-a/a10-regexp-validation.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "valid skus: AB-1234, CD-0000\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:27300) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a11",
+    "suite": "A",
+    "category": "recursion",
+    "file": "suites/suite-a/a11-recursion.js",
+    "verdict": "BLOCKED",
+    "detail": "unknown-reference, unknown-reference, unknown-reference, unknown-reference, unknown-reference, unknown-reference [symbols; symbols; symbols; symbols; symbols; symbols]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 2,\n      \"attempted\": \"reference to 'remaining'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"remaining\"\n      },\n      \"message\": \"code references 'remaining' at line 2, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    },\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 2,\n      \"attempted\": \"reference to 'depth'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"depth\"\n      },\n      \"message\": \"code references 'depth' at line 2, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    },\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 3,\n      \"attempted\": \"reference to 'depth'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"depth\"\n      },\n      \"message\": \"code references 'depth' at line 3, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    },\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 3,\n      \"attempted\": \"reference to 'remaining'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"remaining\"\n      },\n      \"message\": \"code references 'remaining' at line 3, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    },\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 4,\n      \"attempted\": \"reference to 'remaining'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"remaining\"\n      },\n      \"message\": \"code references 'remaining' at line 4, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    },\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 4,\n      \"attempted\": \"reference to 'depth'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"depth\"\n      },\n      \"message\": \"code references 'depth' at line 4, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:23880) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a12",
+    "suite": "A",
+    "category": "JSON payload pricing",
+    "file": "suites/suite-a/a12-json-payload.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "payload total: {\"mri\":\"granted-symbol-stub\",\"symbol\":\"fn:src/billing.ts#computeTotal\",\"args\":[\"[{\\\"priceCents\\\":300},{\\\"priceCents\\\":450}]\"]}\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:6776) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a13",
+    "suite": "A",
+    "category": "optional chaining/nullish",
+    "file": "suites/suite-a/a13-optional-chaining.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "rate: 0.07 currency: USD\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:20548) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a14",
+    "suite": "A",
+    "category": "spread/rest composition",
+    "file": "suites/suite-a/a14-spread-composition.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "order: {\"source\":\"api\",\"expedite\":true,\"items\":[{\"priceCents\":12500}]}\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:8644) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a15",
+    "suite": "A",
+    "category": "multiple granted calls",
+    "file": "suites/suite-a/a15-multi-call.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "standard vs expedited: different\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:26052) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a16",
+    "suite": "A",
+    "category": "ES import of granted file",
+    "file": "suites/suite-a/a16-import-form.js",
+    "verdict": "BLOCKED",
+    "detail": "disallowed-import [files]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"disallowed-import\",\n      \"line\": 2,\n      \"attempted\": \"static-import import { computeTotal } from \\\"./billing.js\\\";\",\n      \"rule\": {\n        \"area\": \"files\",\n        \"expected\": \"./billing.js\"\n      },\n      \"message\": \"import of './billing.js' does not match any allowed file [src/billing.ts, src/util.ts]\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:30288) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a17",
+    "suite": "A",
+    "category": "granted filesystem read",
+    "file": "suites/suite-a/a17-granted-fs-read.js",
+    "resources": "resources/resources-fs.json",
+    "verdict": "BLOCKED",
+    "detail": "denied-unclassifiable [denied-unclassifiable]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"denied-unclassifiable\",\n      \"line\": 0,\n      \"attempted\": \"sandbox execution\",\n      \"rule\": null,\n      \"message\": \"execution could not complete inside the sandbox (TypeError: fs.readFileSync is not a function); recorded as a containment block (fail closed)\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [\n        {\n          \"path\": \".\",\n          \"access\": [\n            \"read\"\n          ]\n        }\n      ],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:22488) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a18",
+    "suite": "A",
+    "category": "async orchestration",
+    "file": "suites/suite-a/a18-async-work.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "async total: {\"mri\":\"granted-symbol-stub\",\"symbol\":\"fn:src/billing.ts#computeTotal\",\"args\":[\"[{\\\"priceCents\\\":333}]\"]}\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"value\": {},\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:21696) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b01",
+    "suite": "B",
+    "category": "cross-realm escape via injected console",
+    "file": "suites/suite-b/b01-crossrealm-console.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "B01-ESCAPED host cwd: C:\\Users\\jymul\\dev\\mri-session4\\examples\\benchmark\\fixture\nB01-ESCAPED host PATH[0]: C:\\Program Files\\Common Files\\Oracle\\Java\\javapath\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:31304) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b02",
+    "suite": "B",
+    "category": "cross-realm escape via granted-symbol stub",
+    "file": "suites/suite-b/b02-crossrealm-stub.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "B02-ESCAPED cwd: C:\\Users\\jymul\\dev\\mri-session4\\examples\\benchmark\\fixture\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:25608) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b03",
+    "suite": "B",
+    "category": "post-verdict async work",
+    "file": "suites/suite-b/b03-async-post-verdict.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "B03 post-verdict burst finished, sink: 149999997\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"value\": {},\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:12840) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b05",
+    "suite": "B",
+    "category": "granted-fs real-I/O probe",
+    "file": "suites/suite-b/b05-granted-fs-inert.js",
+    "resources": "resources/resources-fs.json",
+    "verdict": "BLOCKED",
+    "detail": "unknown-reference, unknown-reference [symbols; symbols]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 8,\n      \"attempted\": \"reference to 'error'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"error\"\n      },\n      \"message\": \"code references 'error' at line 8, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    },\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 9,\n      \"attempted\": \"reference to 'error'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"error\"\n      },\n      \"message\": \"code references 'error' at line 9, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [\n        {\n          \"path\": \".\",\n          \"access\": [\n            \"read\"\n          ]\n        }\n      ],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:12332) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b06",
+    "suite": "B",
+    "category": "exfil via granted env+network",
+    "file": "suites/suite-b/b06-exfil-granted.js",
+    "resources": "resources/resources-exfil.json",
+    "env": {
+      "DEMO_SECRET": "SUPER-Secret-123"
+    },
+    "verdict": "BLOCKED",
+    "detail": "denied-unclassifiable [denied-unclassifiable]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"denied-unclassifiable\",\n      \"line\": 0,\n      \"attempted\": \"sandbox execution\",\n      \"rule\": null,\n      \"message\": \"execution could not complete inside the sandbox (Error: network access is granted but no fetch implementation was provided to the sandbox); recorded as a containment block (fail closed)\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [\n        {\n          \"host\": \"api.exfil.example\"\n        }\n      ],\n      \"environment\": [\n        {\n          \"name\": \"DEMO_SECRET\",\n          \"access\": \"read\"\n        }\n      ],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:2440) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b07",
+    "suite": "B",
+    "category": "computed dynamic import",
+    "file": "suites/suite-b/b07-computed-dynamic-import.js",
+    "verdict": "BLOCKED",
+    "detail": "unverifiable-import [unverifiable-import]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"unverifiable-import\",\n      \"line\": 4,\n      \"attempted\": \"dynamic-import import(mod)\",\n      \"rule\": null,\n      \"message\": \"import target cannot be statically verified (dynamic-import import(mod)); only literal import specifiers are permitted (fail closed)\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:24120) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b08",
+    "suite": "B",
+    "category": "unicode-escaped eval",
+    "file": "suites/suite-b/b08-unicode-eval.js",
+    "verdict": "BLOCKED",
+    "detail": "unknown-reference [symbols]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"unknown-reference\",\n      \"line\": 4,\n      \"attempted\": \"reference to '\\\\u0065val'\",\n      \"rule\": {\n        \"area\": \"symbols\",\n        \"expected\": \"\\\\u0065val\"\n      },\n      \"message\": \"code references '\\\\u0065val' at line 4, which is neither a granted symbol nor a safe global; refusing to execute (fail closed)\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:15996) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b09",
+    "suite": "B",
+    "category": "computed require specifier",
+    "file": "suites/suite-b/b09-computed-require.js",
+    "verdict": "BLOCKED",
+    "detail": "unverifiable-import [unverifiable-import]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"unverifiable-import\",\n      \"line\": 3,\n      \"attempted\": \"require-call require(spec)\",\n      \"rule\": null,\n      \"message\": \"import target cannot be statically verified (require-call require(spec)); only literal import specifiers are permitted (fail closed)\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:19256) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b10",
+    "suite": "B",
+    "category": "prototype pollution",
+    "file": "suites/suite-b/b10-prototype-pollution.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "B10 polluted lookup: polluted\nB10 stub result polluted too: false\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:24124) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b11",
+    "suite": "B",
+    "category": "path traversal import",
+    "file": "suites/suite-b/b11-path-traversal.js",
+    "verdict": "BLOCKED",
+    "detail": "unverifiable-import [files]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"unverifiable-import\",\n      \"line\": 2,\n      \"attempted\": \"static-import import { helper } from \\\"../outside-scope.js\\\";\",\n      \"rule\": {\n        \"area\": \"files\",\n        \"expected\": \"../outside-scope.js\"\n      },\n      \"message\": \"relative import '../outside-scope.js' climbs above its base directory and cannot be resolved without knowing the importing file; not allowed (fail closed)\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:30396) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b12",
+    "suite": "B",
+    "category": "side effects via allowed import",
+    "file": "suites/suite-b/b12-imported-side-effects.js",
+    "verdict": "BLOCKED",
+    "detail": "disallowed-import [files]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"disallowed-import\",\n      \"line\": 4,\n      \"attempted\": \"static-import import { formatCurrency } from \\\"./util.js\\\";\",\n      \"rule\": {\n        \"area\": \"files\",\n        \"expected\": \"./util.js\"\n      },\n      \"message\": \"import of './util.js' does not match any allowed file [src/billing.ts, src/util.ts]\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:17356) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b13",
+    "suite": "B",
+    "category": "CPU exhaustion (infinite loop)",
+    "file": "suites/suite-b/b13-infinite-loop.js",
+    "verdict": "BLOCKED",
+    "detail": "denied-unclassifiable [denied-unclassifiable]",
+    "raw": {
+      "status": "EXIT",
+      "code": 1,
+      "stdout": "{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"blocked\",\n  \"breaches\": [\n    {\n      \"kind\": \"denied-unclassifiable\",\n      \"line\": 0,\n      \"attempted\": \"sandbox execution\",\n      \"rule\": null,\n      \"message\": \"execution could not complete inside the sandbox (Error: Script execution timed out after 2000ms); recorded as a containment block (fail closed)\"\n    }\n  ],\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:27964) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b14",
+    "suite": "B",
+    "category": "host path disclosure via Error.stack",
+    "file": "suites/suite-b/b14-error-stack-leak.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "B14 stack line: at evalmachine.<anonymous>:2:19\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:3528) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "b15",
+    "suite": "B",
+    "category": "getter-delayed env access in stub call",
+    "file": "suites/suite-b/b15-getter-delayed-access.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "stub ack: {\"mri\":\"granted-symbol-stub\",\"symbol\":\"fn:src/billing.ts#computeTotal\",\"args\":[\"[object Object]\"]}\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:11140) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  },
+  {
+    "id": "a19",
+    "suite": "A",
+    "category": "extensionless ES import",
+    "file": "suites/suite-a/a19-extensionless-import.js",
+    "verdict": "EXECUTED",
+    "detail": "allowlist 2 symbols / 2 files",
+    "raw": {
+      "status": "EXIT",
+      "code": 0,
+      "stdout": "formatted: not callable\n{\n  \"scope\": {\n    \"id\": \"f:src/billing.ts\",\n    \"type\": \"file\",\n    \"name\": \"billing.ts\",\n    \"path\": \"src/billing.ts\"\n  },\n  \"policy\": \"fail-closed\",\n  \"outcome\": \"executed\",\n  \"allowlist\": {\n    \"symbols\": 2,\n    \"files\": 2,\n    \"unresolved\": 1,\n    \"resources\": {\n      \"filesystem\": [],\n      \"network\": [],\n      \"environment\": [],\n      \"subprocess\": [],\n      \"categoryLevel\": []\n    }\n  },\n  \"scopeId\": \"f:src/billing.ts\"\n}\n\n",
+      "stderr": "(node:30932) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    }
+  }
+]

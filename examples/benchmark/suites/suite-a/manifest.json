@@ -1,0 +1,5 @@
+{
+  "title": "Suite A - legitimate agent tasks must all execute cleanly",
+  "scope": "f:src/billing.ts",
+  "suite": "suite-a"
+}

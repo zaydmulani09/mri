@@ -1,0 +1,210 @@
+{
+  "scope": "f:src/billing.ts",
+  "fixture": "examples/benchmark/fixture",
+  "cases": [
+    {
+      "id": "a01",
+      "suite": "A",
+      "category": "bug-fix call",
+      "file": "suites/suite-a/a01-bugfix-call.js"
+    },
+    {
+      "id": "a02",
+      "suite": "A",
+      "category": "small feature (local helper)",
+      "file": "suites/suite-a/a02-feature-discount.js"
+    },
+    {
+      "id": "a03",
+      "suite": "A",
+      "category": "refactor (extract helper)",
+      "file": "suites/suite-a/a03-refactor-extract.js"
+    },
+    {
+      "id": "a04",
+      "suite": "A",
+      "category": "pure data transform",
+      "file": "suites/suite-a/a04-data-transform.js"
+    },
+    {
+      "id": "a05",
+      "suite": "A",
+      "category": "Map/Set aggregation",
+      "file": "suites/suite-a/a05-aggregation.js"
+    },
+    {
+      "id": "a06",
+      "suite": "A",
+      "category": "Date/string formatting",
+      "file": "suites/suite-a/a06-date-format.js"
+    },
+    {
+      "id": "a07",
+      "suite": "A",
+      "category": "error handling around granted call",
+      "file": "suites/suite-a/a07-error-handling.js"
+    },
+    {
+      "id": "a08",
+      "suite": "A",
+      "category": "local class composition",
+      "file": "suites/suite-a/a08-local-class.js"
+    },
+    {
+      "id": "a09",
+      "suite": "A",
+      "category": "template-literal report",
+      "file": "suites/suite-a/a09-report-template.js"
+    },
+    {
+      "id": "a10",
+      "suite": "A",
+      "category": "RegExp validation",
+      "file": "suites/suite-a/a10-regexp-validation.js"
+    },
+    {
+      "id": "a11",
+      "suite": "A",
+      "category": "recursion",
+      "file": "suites/suite-a/a11-recursion.js"
+    },
+    {
+      "id": "a12",
+      "suite": "A",
+      "category": "JSON payload pricing",
+      "file": "suites/suite-a/a12-json-payload.js"
+    },
+    {
+      "id": "a13",
+      "suite": "A",
+      "category": "optional chaining/nullish",
+      "file": "suites/suite-a/a13-optional-chaining.js"
+    },
+    {
+      "id": "a14",
+      "suite": "A",
+      "category": "spread/rest composition",
+      "file": "suites/suite-a/a14-spread-composition.js"
+    },
+    {
+      "id": "a15",
+      "suite": "A",
+      "category": "multiple granted calls",
+      "file": "suites/suite-a/a15-multi-call.js"
+    },
+    {
+      "id": "a16",
+      "suite": "A",
+      "category": "ES import of granted file",
+      "file": "suites/suite-a/a16-import-form.js"
+    },
+    {
+      "id": "a17",
+      "suite": "A",
+      "category": "granted filesystem read",
+      "file": "suites/suite-a/a17-granted-fs-read.js",
+      "resources": "resources/resources-fs.json"
+    },
+    {
+      "id": "a18",
+      "suite": "A",
+      "category": "async orchestration",
+      "file": "suites/suite-a/a18-async-work.js"
+    },
+    {
+      "id": "b01",
+      "suite": "B",
+      "category": "cross-realm escape via injected console",
+      "file": "suites/suite-b/b01-crossrealm-console.js"
+    },
+    {
+      "id": "b02",
+      "suite": "B",
+      "category": "cross-realm escape via granted-symbol stub",
+      "file": "suites/suite-b/b02-crossrealm-stub.js"
+    },
+    {
+      "id": "b03",
+      "suite": "B",
+      "category": "post-verdict async work",
+      "file": "suites/suite-b/b03-async-post-verdict.js"
+    },
+    {
+      "id": "b05",
+      "suite": "B",
+      "category": "granted-fs real-I/O probe",
+      "file": "suites/suite-b/b05-granted-fs-inert.js",
+      "resources": "resources/resources-fs.json"
+    },
+    {
+      "id": "b06",
+      "suite": "B",
+      "category": "exfil via granted env+network",
+      "file": "suites/suite-b/b06-exfil-granted.js",
+      "resources": "resources/resources-exfil.json",
+      "env": {
+        "DEMO_SECRET": "SUPER-Secret-123"
+      }
+    },
+    {
+      "id": "b07",
+      "suite": "B",
+      "category": "computed dynamic import",
+      "file": "suites/suite-b/b07-computed-dynamic-import.js"
+    },
+    {
+      "id": "b08",
+      "suite": "B",
+      "category": "unicode-escaped eval",
+      "file": "suites/suite-b/b08-unicode-eval.js"
+    },
+    {
+      "id": "b09",
+      "suite": "B",
+      "category": "computed require specifier",
+      "file": "suites/suite-b/b09-computed-require.js"
+    },
+    {
+      "id": "b10",
+      "suite": "B",
+      "category": "prototype pollution",
+      "file": "suites/suite-b/b10-prototype-pollution.js"
+    },
+    {
+      "id": "b11",
+      "suite": "B",
+      "category": "path traversal import",
+      "file": "suites/suite-b/b11-path-traversal.js"
+    },
+    {
+      "id": "b12",
+      "suite": "B",
+      "category": "side effects via allowed import",
+      "file": "suites/suite-b/b12-imported-side-effects.js"
+    },
+    {
+      "id": "b13",
+      "suite": "B",
+      "category": "CPU exhaustion (infinite loop)",
+      "file": "suites/suite-b/b13-infinite-loop.js"
+    },
+    {
+      "id": "b14",
+      "suite": "B",
+      "category": "host path disclosure via Error.stack",
+      "file": "suites/suite-b/b14-error-stack-leak.js"
+    },
+    {
+      "id": "b15",
+      "suite": "B",
+      "category": "getter-delayed env access in stub call",
+      "file": "suites/suite-b/b15-getter-delayed-access.js"
+    },
+    {
+      "id": "a19",
+      "suite": "A",
+      "category": "extensionless ES import",
+      "file": "suites/suite-a/a19-extensionless-import.js"
+    }
+  ]
+}

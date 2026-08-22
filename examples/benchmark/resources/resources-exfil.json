@@ -1,0 +1,10 @@
+{
+  "scopes": {
+    "f:src/billing.ts": {
+      "filesystem": [],
+      "network": [{ "host": "api.exfil.example" }],
+      "environment": [{ "name": "DEMO_SECRET", "access": "read" }],
+      "subprocess": []
+    }
+  }
+}
