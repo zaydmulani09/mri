@@ -63,7 +63,7 @@ function recordFunction(node: Node, acc: PythonExtraction): void {
   if (!name) return;
   acc.functions.push({
     name,
-    exported: false,
+    exported: true,
     startLine: startLine(node),
     endLine: endLine(node),
   });
@@ -100,7 +100,7 @@ function recordClass(node: Node, acc: PythonExtraction): void {
   }
   acc.classes.push({
     name: className,
-    exported: false,
+    exported: true,
     methods,
     extends: superClasses,
     startLine: startLine(node),
@@ -181,6 +181,7 @@ function endLine(node: Node): number {
 function collectCalls(root: Node, container: string, acc: PythonExtraction): void {
   walkNamed(root, (node) => {
     if (node.type !== "call") return;
+    if (isIntermediateCall(node)) return;
     const site = classifyCallee(node.childForFieldName("function"));
     if (site) {
       acc.calls.push({ ...site, line: startLine(node), container });
@@ -193,6 +194,20 @@ function walkNamed(node: Node, visit: (n: Node) => void): void {
     visit(child);
     walkNamed(child, visit);
   }
+}
+
+function isIntermediateCall(node: Node): boolean {
+  const parent = node.parent;
+  if (!parent) return false;
+  if (parent.type === "call") {
+    const callee = parent.childForFieldName("function");
+    if (callee && callee.id === node.id) return true;
+  }
+  if (parent.type === "attribute") {
+    const object = parent.childForFieldName("object");
+    if (object && object.id === node.id) return true;
+  }
+  return false;
 }
 
 function classifyCallee(

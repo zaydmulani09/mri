@@ -347,12 +347,14 @@ function endLine(node: Node): number {
 function collectCalls(root: Node, container: string, acc: JavaScriptExtraction): void {
   walkNamed(root, (node) => {
     if (node.type === "call_expression") {
+      if (isIntermediateCall(node)) return;
       const callee = node.childForFieldName("function");
       const site = classifyCallee(callee);
       if (site) {
         acc.calls.push({ ...site, line: startLine(node), container });
       }
     } else if (node.type === "new_expression") {
+      if (isIntermediateCall(node)) return;
       const ctor = node.childForFieldName("constructor");
       const site = classifyCallee(ctor);
       if (site) {
@@ -367,6 +369,21 @@ function walkNamed(node: Node, visit: (n: Node) => void): void {
     visit(child);
     walkNamed(child, visit);
   }
+}
+
+function isIntermediateCall(node: Node): boolean {
+  const parent = node.parent;
+  if (!parent) return false;
+  if (parent.type === "call_expression" || parent.type === "new_expression") {
+    const callee =
+      parent.childForFieldName("function") ?? parent.childForFieldName("constructor");
+    if (callee && callee.id === node.id) return true;
+  }
+  if (parent.type === "member_expression") {
+    const object = parent.childForFieldName("object");
+    if (object && object.id === node.id) return true;
+  }
+  return false;
 }
 
 function classifyCallee(
