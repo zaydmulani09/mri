@@ -13,6 +13,7 @@ export interface BuildSummary {
   root: string;
   dbPath: string;
   fileCount: number;
+  parseErrorFiles: number;
   counts: GraphCounts;
   callsResolved: number;
   callsAmbiguous: number;
@@ -48,13 +49,17 @@ export async function buildRepoGraph(
       store.setMeta("root", toPosix(root));
       store.setMeta("generated_at", new Date().toISOString());
       store.setMeta("file_count", String(extraction.files.length));
-
+      store.setMeta(
+        "parse_error_files",
+        String(extraction.files.filter((f) => f.hasParseErrors).length),
+      );
       store.db.exec("COMMIT");
 
       return {
         root: toPosix(root),
         dbPath: path.resolve(dbPath),
         fileCount: extraction.files.length,
+        parseErrorFiles: extraction.files.filter((f) => f.hasParseErrors).length,
         counts: store.counts(),
         callsResolved: calls.resolved,
         callsAmbiguous: calls.ambiguous,

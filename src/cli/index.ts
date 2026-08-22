@@ -3,7 +3,12 @@ import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import { extractRepo, type RepoExtraction } from "../extraction/index.js";
 import { buildRepoGraph, openGraph, type BuildSummary } from "../graph/index.js";
-import { computeBlastRadius, runAnalysis, type AnalysisReport } from "../analysis/index.js";
+import {
+  computeBlastRadius,
+  runAnalysis,
+  type AnalysisReport,
+  type BlastRadiusNode as BlastRadiusDependent,
+} from "../analysis/index.js";
 
 const USAGE = `mri - code intelligence engine
 
@@ -169,12 +174,12 @@ function formatBlastRadius(result: ReturnType<typeof computeBlastRadius>): strin
   return lines.join("\n");
 }
 
-function runBlastRadius(options: CliOptions): number {
-  if (!options.target) {
+function runBlastRadius(args: { nodeId: string | null; db: string | null; format: string | null }): number {
+  if (!args.nodeId) {
     process.stderr.write(`mri blast-radius requires a node id\n\n${USAGE}`);
     return 1;
   }
-  const dbPath = options.out ?? path.join(".mri", "graph.sqlite");
+  const dbPath = args.db ?? path.join(".mri", "graph.sqlite");
   if (!existsSync(dbPath)) {
     process.stderr.write(`error: graph database not found at ${dbPath}\nRun \`mri build\` first.\n`);
     return 1;
@@ -184,7 +189,7 @@ function runBlastRadius(options: CliOptions): number {
   try {
     const store = openGraph(dbPath);
     try {
-      result = computeBlastRadius(store, options.target);
+      result = computeBlastRadius(store, args.nodeId);
     } finally {
       store.db.close();
     }
@@ -194,115 +199,274 @@ function runBlastRadius(options: CliOptions): number {
     return 1;
   }
 
-  process.stdout.write(formatBlastRadius(result) + "\n");
+  const format = args.format ?? "flat";
+  if (format === "tree") {
+    process.stdout.write(renderBlastRadiusTree(result) + "\n");
+  } else {
+    process.stdout.write(formatBlastRadius(result) + "\n");
+  }
   return 0;
 }
 
-function extractNumericFlags(
-  argv: string[],
-): { rest: string[]; values: Record<string, number> } | null {
-  const names: Record<string, string> = {
-    "--top": "top",
-    "--window": "window",
+function renderBlastRadiusTree(result: ReturnType<typeof computeBlastRadius>): string {
+  const lines: string[] = [`${result.root.id}  (${result.root.type})`];
+
+  const childrenOf = new Map<string, BlastRadiusDependent[]>();
+  const orphans: BlastRadiusDependent[] = [];
+  for (const dep of result.dependents) {
+    if (dep.parentId === null || dep.parentId === undefined) {
+      orphans.push(dep);
+      continue;
+    }
+    const list = childrenOf.get(dep.parentId) ?? [];
+    list.push(dep);
+    childrenOf.set(dep.parentId, list);
+  }
+
+  const walk = (parentId: string, indent: string): void => {
+    const children = childrenOf.get(parentId) ?? [];
+    for (const child of children) {
+      const marker = child.via === "confirmed" ? "✓" : "?";
+      lines.push(
+        `${indent}├─ ${marker} ${child.id}   d${child.depth} · ${child.relation}`,
+      );
+      walk(child.id, indent + "│  ");
+    }
   };
-  const rest: string[] = [];
-  const values: Record<string, number> = {};
+  walk(result.root.id, "");
+
+  if (orphans.length > 0) {
+    lines.push("");
+    lines.push("? ambiguous-name references (not confirmed to point here):");
+    for (const dep of orphans) {
+      lines.push(`   ? ${dep.id}   ${dep.relation}`);
+    }
+  }
+  return lines.join("\n");
+}
+
+interface BlastArgs {
+  nodeId: string | null;
+  db: string | null;
+  format: string | null;
+}
+
+function parseBlastArgs(argv: string[]): BlastArgs | null {
+  const args: BlastArgs = { nodeId: null, db: null, format: null };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === undefined) break;
-    const key = names[arg];
-    if (key) {
-      const raw = argv[i + 1];
-      const parsed = raw !== undefined ? Number(raw) : NaN;
-      if (!Number.isFinite(parsed) || parsed < 0) return null;
-      values[key] = parsed;
-      i++;
-    } else {
-      rest.push(arg);
+    switch (arg) {
+      case "--db":
+      case "-d":
+        args.db = argv[++i] ?? null;
+        break;
+      case "--format": {
+        const value = argv[++i];
+        if (value !== "tree" && value !== "flat") return null;
+        args.format = value;
+        break;
+      }
+      default:
+        if (arg.startsWith("-")) return null;
+        if (args.nodeId === null) args.nodeId = arg;
+        else return null;
     }
   }
-  return { rest, values };
+  return args;
 }
 
-function formatAnalysisReport(report: AnalysisReport): string {
+function renderAnalysisReport(report: AnalysisReport): string {
   const lines: string[] = [];
-  const calls = report.summary.counts.edgesByType["calls"] ?? 0;
-  const ambiguousEdges = report.summary.counts.edgesByConfidence["ambiguous"] ?? 0;
+  const c = report.summary.counts;
+  const sum = (record: Record<string, number>): number =>
+    Object.values(record).reduce((a, b) => a + b, 0);
+  const calls = c.edgesByType["calls"] ?? 0;
+  const resolvedCalls = calls - (c.edgesByConfidence["ambiguous"] ?? 0);
 
-  lines.push(`mri analysis: ${report.root}`);
-  lines.push(
-    `files ${report.summary.fileCount} | nodes ${
-      Object.values(report.summary.counts.nodesByType).reduce((a, b) => a + b, 0)
-    } | edges ${
-      Object.values(report.summary.counts.edgesByType).reduce((a, b) => a + b, 0)
-    } (calls ${calls}: ${calls - ambiguousEdges} resolved, ${ambiguousEdges} ambiguous)`,
-  );
+  lines.push("=".repeat(52));
+  lines.push("mri codebase report");
+  lines.push("=".repeat(52));
+  lines.push(`repo:  ${report.root}`);
+  lines.push(`built: ${report.generatedAt}   churn window: ${report.windowDays}d`);
+
+  const langText = Object.entries(report.architecture.languages)
+    .sort((a, b) => b[1] - a[1])
+    .map(([lang, n]) => `${lang} ${n}`)
+    .join(", ");
   lines.push("");
-
-  const confirmed = report.deadCode.filter(
-    (c) => c.confidence === "confirmed-unreferenced",
-  ).length;
+  lines.push("ARCHITECTURE");
+  lines.push(`  files             ${report.summary.fileCount}${langText ? `   (${langText})` : ""}`);
   lines.push(
-    `dead code candidates: ${report.deadCode.length} (${confirmed} confirmed-unreferenced, ${
-      report.deadCode.length - confirmed
-    } no-resolved-references)`,
+    `  symbols           functions ${(c.nodesByType["function"] ?? 0)} | classes ${
+      c.nodesByType["class"] ?? 0
+    } | methods ${c.nodesByType["method"] ?? 0}`,
   );
-  for (const candidate of report.deadCode) {
+  lines.push(
+    `  edges             defines ${c.edgesByType["defines"] ?? 0} | imports ${
+      c.edgesByType["imports"] ?? 0
+    } | calls ${calls} (${resolvedCalls} resolved / ${calls - resolvedCalls} ambiguous) | inherits ${
+      c.edgesByType["inherits"] ?? 0
+    }`,
+  );
+  if (report.architecture.externalModules.length > 0) {
     lines.push(
-      `  ${candidate.confidence.padEnd(26)}  ${candidate.id} [${candidate.path}]${
-        candidate.note ? ` (${candidate.note})` : ""
-      }`,
+      `  external modules  ${report.architecture.externalModules.length}   [${report.architecture.externalModules.join(", ")}]`,
+    );
+  }
+  if (report.architecture.mostImportedFiles.length > 0) {
+    lines.push(
+      `  most depended on  ${report.architecture.mostImportedFiles
+        .map((f) => `${f.path} (${f.importers})`)
+        .join(", ")}`,
     );
   }
   lines.push("");
 
-  const pct =
-    report.coverage.sourceFiles.length === 0
-      ? "n/a"
-      : `${(report.coverage.coverageRatio * 100).toFixed(1)}%`;
+  lines.push("TECH DEBT");
   lines.push(
-    `test coverage (import-based estimate): ${pct} (${
-      report.coverage.coveredFiles.length
-    }/${report.coverage.sourceFiles.length} source files)`,
+    `  dead code candidates ${report.deadCode.length}   (detail under DEAD CODE)`,
   );
-  for (const exercise of report.coverage.exercises) {
-    lines.push(`  ${exercise.testFile} -> ${exercise.covers.join(", ") || "(nothing internal)"}`);
-  }
   lines.push("");
-
-  lines.push(`top risk files (churn window ${report.windowDays}d):`);
+  lines.push(
+    `  risk scores (top ${report.topRisks.length} of ${report.risks.length} files, window ${report.windowDays}d)`,
+  );
   report.topRisks.forEach((risk, index) => {
     const parts = [
       `churn ${risk.components.churnCommits} commits (+${risk.churnPoints}pts)`,
       risk.components.hasTests
-        ? `tested by ${risk.components.coveringTests.join(", ")} (+0pts)`
+        ? "tested (+0pts)"
         : "no tests found (+30pts)",
     ];
     if (risk.components.untracked) parts.unshift("untracked in git");
     else if (risk.components.lastModifiedIso)
       parts.push(`last modified ${risk.components.lastModifiedIso.slice(0, 10)}`);
     lines.push(
-      `  ${index + 1}. ${risk.path}  score ${risk.score}  [${parts.join(" | ")}]`,
+      `    ${String(index + 1).padStart(2)}. ${risk.path.padEnd(28)} score ${String(risk.score).padStart(3)}   [${parts.join(" | ")}]`,
     );
   });
+  lines.push("");
+
+  lines.push("SECURITY-RELEVANT SIGNALS (gaps in knowledge, not findings)");
+  const refs = report.security.unresolvedReferences
+    .map((r) => `"${r.reference}" x${r.count}`)
+    .join(", ");
+  lines.push(`  unresolved references   ${report.security.unresolvedReferenceCount}   ${refs || "-"}`);
+  lines.push(
+    `  untested & churning     ${report.security.untestedChurningFiles.length}${
+      report.security.untestedChurningFiles.length > 0
+        ? `   -> ${report.security.untestedChurningFiles.join(", ")}`
+        : ""
+    }`,
+  );
+  lines.push(
+    `  external dependencies   ${report.security.externalDependencies.length}${
+      report.security.externalDependencies.length > 0
+        ? `   -> ${report.security.externalDependencies.join(", ")}`
+        : ""
+    }`,
+  );
+  lines.push(`  files with parse errors ${report.security.parseErrorFileCount}`);
+  lines.push("");
+
+  const confirmed = report.deadCode.filter(
+    (cand) => cand.confidence === "confirmed-unreferenced",
+  ).length;
+  lines.push("DEAD CODE");
+  lines.push(
+    `  candidates ${report.deadCode.length}: ${confirmed} confirmed-unreferenced, ${
+      report.deadCode.length - confirmed
+    } no-resolved-references`,
+  );
+  for (const candidate of report.deadCode) {
+    lines.push(
+      `    [${candidate.confidence}]  ${candidate.id}  [${candidate.path}]${
+        candidate.note ? ` (${candidate.note})` : ""
+      }`,
+    );
+  }
+  if (report.deadCode.length === 0) lines.push("    none found (within the conservative rules above)");
+  lines.push("");
+
+  lines.push("TEST COVERAGE");
+  const pct =
+    report.coverage.sourceFiles.length === 0
+      ? "n/a"
+      : `${(report.coverage.coverageRatio * 100).toFixed(1)}%`;
+  lines.push(
+    `  estimated coverage ${pct} (${report.coverage.coveredFiles.length}/${report.coverage.sourceFiles.length} source files, import-based approximation)`,
+  );
+  for (const exercise of report.coverage.exercises) {
+    lines.push(`    covered by ${exercise.testFile} -> ${exercise.covers.join(", ") || "(nothing internal)"}`);
+  }
+  const uncoveredSample = report.coverage.uncoveredFiles.slice(0, 8);
+  if (uncoveredSample.length > 0) {
+    const more =
+      report.coverage.uncoveredFiles.length - uncoveredSample.length > 0
+        ? `, +${report.coverage.uncoveredFiles.length - uncoveredSample.length} more`
+        : "";
+    lines.push(`    not covered: ${uncoveredSample.join(", ")}${more}`);
+  }
 
   return lines.join("\n");
 }
 
-async function runAnalyze(options: CliOptions, numeric: Record<string, number>): Promise<number> {
-  if (!options.target) {
+interface AnalyzeArgs {
+  target: string | null;
+  db: string | null;
+  json: boolean;
+  top: number | null;
+  window: number | null;
+}
+
+function parseAnalyzeArgs(argv: string[]): AnalyzeArgs | null {
+  const args: AnalyzeArgs = { target: null, db: null, json: false, top: null, window: null };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === undefined) break;
+    switch (arg) {
+      case "--db":
+      case "-d":
+        args.db = argv[++i] ?? null;
+        break;
+      case "--json":
+        args.json = true;
+        break;
+      case "--top": {
+        const n = Number(argv[++i]);
+        if (!Number.isFinite(n) || n < 1) return null;
+        args.top = n;
+        break;
+      }
+      case "--window": {
+        const n = Number(argv[++i]);
+        if (!Number.isFinite(n) || n < 1) return null;
+        args.window = n;
+        break;
+      }
+      default:
+        if (arg.startsWith("-")) return null;
+        if (args.target === null) args.target = arg;
+        else return null;
+    }
+  }
+  return args;
+}
+
+async function runAnalyze(args: AnalyzeArgs): Promise<number> {
+  if (!args.target) {
     process.stderr.write(`mri analyze requires a target path\n\n${USAGE}`);
     return 1;
   }
   const dbPath =
-    options.out ?? path.join(path.resolve(options.target), ".mri", "graph.sqlite");
+    args.db ?? path.join(path.resolve(args.target), ".mri", "graph.sqlite");
 
   let report: AnalysisReport;
   try {
-    report = await runAnalysis(options.target, {
+    report = await runAnalysis(args.target, {
       dbPath,
-      topN: numeric["top"] ?? 5,
-      windowDays: numeric["window"] ?? 90,
+      topN: args.top ?? 10,
+      windowDays: args.window ?? 90,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -310,7 +474,9 @@ async function runAnalyze(options: CliOptions, numeric: Record<string, number>):
     return 1;
   }
 
-  process.stdout.write(formatAnalysisReport(report) + "\n");
+  process.stdout.write(
+    (args.json ? JSON.stringify(report, null, 2) : renderAnalysisReport(report)) + "\n",
+  );
   return 0;
 }
 
@@ -334,17 +500,21 @@ async function main(): Promise<number> {
   const rest = argv.slice(1);
 
   if (command === "analyze") {
-    const numericResult = extractNumericFlags(rest);
-    if (!numericResult) {
+    const args = parseAnalyzeArgs(rest);
+    if (!args) {
       process.stderr.write(`Invalid arguments\n\n${USAGE}`);
       return 1;
     }
-    const options = parseArgs(numericResult.rest, { "--db": "out", "-d": "out" });
-    if (!options) {
+    return runAnalyze(args);
+  }
+
+  if (command === "blast-radius") {
+    const args = parseBlastArgs(rest);
+    if (!args) {
       process.stderr.write(`Invalid arguments\n\n${USAGE}`);
       return 1;
     }
-    return runAnalyze(options, numericResult.values);
+    return runBlastRadius(args);
   }
 
   const options =
@@ -357,8 +527,7 @@ async function main(): Promise<number> {
   }
 
   if (command === "extract") return runExtract(options);
-  if (command === "build") return runBuild(options);
-  return runBlastRadius(options);
+  return runBuild(options);
 }
 
 main()

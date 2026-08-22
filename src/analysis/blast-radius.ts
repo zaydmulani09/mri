@@ -10,6 +10,7 @@ export interface BlastRadiusNode {
   depth: number;
   via: BlastConfidence;
   relation: string;
+  parentId: string | null;
 }
 
 export interface BlastRadiusResult {
@@ -61,6 +62,7 @@ export function computeBlastRadius(
         depth: current.depth + 1,
         via: "confirmed",
         relation: row.relation,
+        parentId: current.id,
       });
       queue.push({ id: row.srcId, depth: current.depth + 1 });
     }
@@ -94,6 +96,7 @@ export function computeBlastRadius(
       depth: 1,
       via: "ambiguous-only",
       relation: "ambiguous-reference",
+      parentId: null,
     });
   }
 
