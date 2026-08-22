@@ -165,7 +165,15 @@ type TargetResolution =
 
 const PATH_LIKE = /[/]|\.(js|jsx|mjs|cjs|ts|tsx|mts|cts|py)$/i;
 
+const NODE_ID_PREFIX = /^(f|fn|cls|m|xm|xf|xc):/;
+
 function resolveTarget(store: GraphStore, target: string): TargetResolution {
+  if (NODE_ID_PREFIX.test(target)) {
+    const node = store.getNode(target);
+    if (!node || node.external === 1) return { status: "not-found" };
+    return { status: "found", node };
+  }
+
   if (PATH_LIKE.test(target)) {
     const fileId = `f:${target}`;
     const exact = store.getNode(fileId);

@@ -1,8 +1,13 @@
 import type { ParseResult, ReasoningQuery } from "./intent.js";
 import { SUPPORTED_INTENTS } from "./intent.js";
 
-const TARGET = String.raw`["']?([A-Za-z0-9_./@#-]+)["']?`;
-const OPTIONAL_SCOPE = String.raw`(?:\s+in\s+["']?([A-Za-z0-9_./-]+)["']?)?`;
+const TARGET = String.raw`["']?([A-Za-z0-9_./@#:~-]+)["']?`;
+const OPTIONAL_SCOPE = String.raw`(?:\s+in\s+["']?([A-Za-z0-9_./:-]+)["']?)?`;
+
+function cleanTarget(raw: string | undefined): string | undefined {
+  if (!raw) return raw;
+  return raw.replace(/[.,;:!?,]+$/, "");
+}
 
 interface PatternRule {
   re: RegExp;
@@ -51,10 +56,19 @@ const RULES: readonly PatternRule[] = [
 ];
 
 export function parseQuestion(question: string): ParseResult {
+  const normalized = question.trim().replace(/[?.!,;:\s]+$/, "");
   for (const rule of RULES) {
-    const match = question.match(rule.re);
+    const match = normalized.match(rule.re);
     if (match) {
-      return { ok: true, query: rule.build(match) };
+      const query = rule.build(match);
+      if (query.type === "blast-radius" || query.type === "dead-code-check") {
+        query.target = cleanTarget(query.target) ?? query.target;
+        if (query.target.length === 0) continue;
+      }
+      if (query.type === "riskiest-file" || query.type === "untested") {
+        query.scope = cleanTarget(query.scope);
+      }
+      return { ok: true, query };
     }
   }
   return {
