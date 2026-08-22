@@ -1,0 +1,115 @@
+# Contributing
+
+Thanks for looking at mri. This guide covers setup, the house style, and one
+set of conventions that matter more than everything else here.
+
+## Setup
+
+```bash
+npm install        # Node.js >= 18
+npm run build      # tsc
+npm run typecheck  # tsc --noEmit, strict
+npm test           # vitest run
+```
+
+Run `npm run typecheck && npm test` before opening a PR. There is no separate
+lint config yet; matching the existing code style is the lint rule.
+
+## Project layout
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design. Short
+version: `src/extraction` (parsing, zero graph knowledge) → `src/graph`
+(resolution + SQLite persistence) → `src/analysis` (passes over the stored
+graph) → `src/cli`. `src/reasoning` answers questions over the graph;
+`src/guardrail` enforces allowlists derived from it. Dependencies point one
+way; don't introduce cycles or reach downward past a layer's public API.
+
+## Code style
+
+Match what's already in the codebase:
+
+- **TypeScript strict mode, ESM** — relative imports carry the `.js`
+  extension (`./types.js`).
+- **Few dependencies.** Runtime deps are currently three tree-sitter
+  grammars plus `ignore`. Anything new needs a strong reason.
+- **Plain data in, plain data out.** Interfaces for shapes, functions for
+  behavior; classes only where state genuinely warrants them (the SQLite
+  wrapper is the model).
+- **Comments are for invariants, not narration.** Explain *why* a rule
+  exists when it encodes policy — see the ambiguous-edge policy block at the
+  top of `src/guardrail/generate.ts` for the standard. Don't leave comments
+  that restate the code.
+- **Errors as values where callers decide.** Resolvers return `null`;
+  enforcement throws typed breaches; CLI entry points translate both into
+  exit codes.
+
+## Tests
+
+- Vitest, mirroring source layout: `javascript-extraction.test.ts`,
+  `graph.test.ts`, `guardrail.test.ts`, etc.
+- Parser-level tests use committed fixtures under `tests/fixtures/` rather
+  than inline strings, so cases stay reusable across layers.
+- When adding resolution logic, add **both** sides: a case that resolves,
+  and a case that must stay ambiguous.
+
+## The confidence / fail-closed conventions
+
+This is the core trust property of the project. It is not optional style;
+it is the product. Any PR that blurs it will be asked to change.
+
+### Graph layer
+
+- Edges are `resolved` or `ambiguous`, nothing else. The schema CHECK
+  constraint enforces `resolved ⇒ dst IS NOT NULL` and `ambiguous ⇒ dst IS
+  NULL`; `GraphStore.addEdge` re-checks at runtime. Preserve both guards.
+- A `resolved` edge requires a **deterministic proof**: same-file scope, an
+  import binding chain, an exported-symbol lookup, or a unique repo-wide
+  candidate (unique means exactly one). Fuzzy matching, "closest candidate",
+  first-of-many, and majority votes are all forbidden resolutions.
+- Ambiguous edges keep the original reference text in `callee_text`. That
+  text is data downstream — never drop it.
+- New edge types or node types must define their resolved/ambiguous
+  semantics in `docs/ARCHITECTURE.md` in the same PR.
+
+### Analysis & reporting layers
+
+- Consumers branch on `confidence` explicitly. Findings that depend on
+  unproven links must be labeled as such (see dead-code's
+  `confirmed-unreferenced` vs `no-resolved-references` split) — never merge
+  confirmed and speculative results into one list.
+- Reports print their components (see risk scoring) so every number can be
+  audited back to inputs.
+
+### Guardrail layer
+
+- Every uncertainty class maps to an explicit breach kind and **blocks**.
+  Parse failure never executes. Non-literal import specifiers, URLs, and
+  env-var names are unverifiable by definition — verify-or-block, never
+  best-effort-allow.
+- Allowlist generation grants from `resolved` graph edges only; ambiguous
+  references go to the `unresolved` list. Do not "helpfully" resolve them.
+- Changes to the safe-globals list in `code-scan.ts` are security-sensitive:
+  each addition widens what generated code may reference without a grant,
+  so justify every entry in the PR description.
+
+## Commits
+
+Conventional commits with an optional scope, lowercase, imperative:
+
+```text
+feat(graph): inheritance and scope-aware call resolvers
+fix(extraction): treat Python top-level defs as exported
+test(guardrail): allowlist cases for scopes and ambiguity exclusion
+docs(architecture): document extraction layer
+```
+
+Keep commits scoped to one concern; mixed refactor+feature+docs commits get
+split during review.
+
+## PRs
+
+Small and focused beats large and thorough. Include: what changed, which
+convention sections above apply, and test evidence (`npm run typecheck &&
+npm test` output summary). If your change touches the confidence model or
+the guardrail, say so explicitly in the description — reviewers will read
+those diffs line by line.
