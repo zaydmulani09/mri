@@ -398,13 +398,16 @@ function renderAnalysisReport(report: AnalysisReport): string {
   lines.push(`  files with parse errors ${report.security.parseErrorFileCount}`);
   lines.push("");
 
+  lines.push("DEAD CODE");
   const confirmed = report.deadCode.filter(
     (cand) => cand.confidence === "confirmed-unreferenced",
   ).length;
-  lines.push("DEAD CODE");
+  const referencedButUncalled = report.deadCode.filter(
+    (cand) => cand.confidence === "referenced-but-uncalled",
+  ).length;
   lines.push(
-    `  candidates ${report.deadCode.length}: ${confirmed} confirmed-unreferenced, ${
-      report.deadCode.length - confirmed
+    `  candidates ${report.deadCode.length}: ${confirmed} confirmed-unreferenced, ${referencedButUncalled} referenced-but-uncalled, ${
+      report.deadCode.length - confirmed - referencedButUncalled
     } no-resolved-references`,
   );
   for (const candidate of report.deadCode) {

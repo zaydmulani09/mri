@@ -3,6 +3,7 @@ import { isEntryFile, isTestFile } from "./file-kinds.js";
 
 export type DeadCodeConfidence =
   | "confirmed-unreferenced"
+  | "referenced-but-uncalled"
   | "no-resolved-references";
 
 export interface DeadCodeCandidate {
@@ -57,6 +58,14 @@ export function findDeadCode(
     if (lastSegment) ambiguousNames.add(lastSegment);
   }
 
+  const referencedByName = new Set(
+    (
+      store.db
+        .prepare(`SELECT DISTINCT dst FROM edges WHERE type = 'references' AND dst IS NOT NULL`)
+        .all() as Array<{ dst: string }>
+    ).map((row) => row.dst),
+  );
+
   const symbolNodes = store.db
     .prepare(
       `SELECT id, type, name, path FROM nodes
@@ -73,16 +82,15 @@ export function findDeadCode(
     if (isEntryFile(node.path)) continue;
     if (isTestFile(node.path)) continue;
     if (referencedIds.has(node.id)) continue;
+    const isReferenced = referencedByName.has(node.id);
 
+    let confidence: DeadCodeConfidence;
     if (ambiguousNames.has(node.name)) {
-      candidates.push({
-        id: node.id,
-        type: node.type as "function" | "class",
-        name: node.name,
-        path: node.path,
-        confidence: "no-resolved-references",
-      });
-      continue;
+      confidence = "no-resolved-references";
+    } else if (isReferenced) {
+      confidence = "referenced-but-uncalled";
+    } else {
+      confidence = "confirmed-unreferenced";
     }
 
     candidates.push({
@@ -90,9 +98,11 @@ export function findDeadCode(
       type: node.type as "function" | "class",
       name: node.name,
       path: node.path,
-      confidence: "confirmed-unreferenced",
+      confidence,
     });
-    if (node.type === "class") confirmedClassIds.add(node.id);
+    if (node.type === "class" && confidence === "confirmed-unreferenced") {
+      confirmedClassIds.add(node.id);
+    }
   }
 
   for (const method of methodsInDeadClasses(store, referencedIds, ambiguousNames)) {
