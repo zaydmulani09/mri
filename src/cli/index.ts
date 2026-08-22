@@ -911,6 +911,51 @@ async function runServe(args: ServeCliArgs): Promise<number> {
   });
 }
 
+interface McpCliArgs {
+  target: string | null;
+}
+
+function parseMcpArgs(argv: string[]): McpCliArgs | null {
+  const args: McpCliArgs = { target: null };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === undefined) break;
+    if (arg.startsWith("-")) return null;
+    if (args.target === null) args.target = arg;
+    else return null;
+  }
+  return args;
+}
+
+async function runMcp(args: McpCliArgs): Promise<number> {
+  if (!args.target) {
+    process.stderr.write(`mri mcp requires a repository path\n\n${USAGE}`);
+    return 1;
+  }
+
+  const repoRoot = path.resolve(args.target);
+  process.stderr.write(`building graph for ${repoRoot}…\n`);
+  let ctx;
+  try {
+    await buildRepoGraph(repoRoot, path.join(repoRoot, ".mri", "graph.sqlite"));
+    const store = openGraph(path.join(repoRoot, ".mri", "graph.sqlite"));
+    const reasoning = buildReasoningContext(store, repoRoot, 90);
+    ctx = mcpContextFromReasoning(reasoning);
+    var storeRef = store;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`error: ${message}\n`);
+    return 1;
+  }
+
+  process.stderr.write("mcp server ready on stdio\n");
+  await new Promise<void>((resolve) => {
+    createMcpServer(process.stdin, process.stdout, ctx, () => resolve());
+  });
+  storeRef.db.close();
+  return 0;
+}
+
 async function main(): Promise<number> {
   const argv = process.argv.slice(2);
   const command = argv[0];
@@ -977,6 +1022,17 @@ async function main(): Promise<number> {
       return 1;
     }
     return runServe(args);
+  }
+
+  if (command === "mcp") {
+    const args = parseMcpArgs(rest);
+    if (!args || !args.target) {
+      process.stderr.write(
+        `mri mcp requires a repository path\n\n${USAGE}`,
+      );
+      return 1;
+    }
+    return runMcp(args);
   }
 
   if (command === "analyze") {
