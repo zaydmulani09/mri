@@ -27,6 +27,7 @@ export const SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
   ".mts",
   ".cts",
   ".py",
+  ".go",
 ]);
 
 interface GitignoreScope {

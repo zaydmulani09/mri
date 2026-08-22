@@ -12,3 +12,8 @@ declare module "tree-sitter-python" {
   const python: unknown;
   export = python;
 }
+
+declare module "tree-sitter-go" {
+  const go: unknown;
+  export = go;
+}
