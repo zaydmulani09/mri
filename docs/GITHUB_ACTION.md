@@ -140,12 +140,13 @@ excluded unresolved references) that CI will enforce.
 
 ## Requirements and notes
 
-- Runner OS: any Linux/macOS runner with Node ≥ 18 and git (Windows works but
-  is untested in self-check).
+- Runner OS: any Linux/macOS runner with git; mri itself requires
+  Node ≥ 22.5 (see `engines` in package.json). Windows works but is untested
+  in self-check.
 - Add `.mri/` to your `.gitignore` — the graph database is written under
   `<repo>/.mri/graph.sqlite` during the run.
 - `changed-files` should be filtered to extensions mri parses
-  (`.js .jsx .mjs .cjs .ts .tsx .mts .cts .py .go`); other files are simply
+  (`.js .jsx .mjs .cjs .ts .tsx .mts .cts .py .go .rs`); other files are simply
   not part of the graph.
 - Security claims and limits are scoped honestly in
   [docs/THREAT_MODEL.md](THREAT_MODEL.md) and demonstrated in
