@@ -66,12 +66,15 @@ runs:
   using: composite
   steps:
     - name: Check out mri outside the analyzed workspace
-      uses: actions/checkout@v4
-      with:
-        repository: zaydmulani09/mri
-        ref: ${{ inputs.mri-ref }}
-        path: ${{ runner.temp }}/mri-action-source
-        persist-credentials: false
+      shell: bash
+      env:
+        MRI_REF: ${{ inputs.mri-ref }}
+      run: |
+        set -euo pipefail
+        dest="$RUNNER_TEMP/mri-action-source"
+        rm -rf "$dest"
+        git clone --depth 1 --branch "$MRI_REF" https://github.com/zaydmulani09/mri "$dest"
+        echo "MRI_DIR=$dest" >> "$GITHUB_ENV"
 
     - name: Set up Node
       uses: actions/setup-node@v4
