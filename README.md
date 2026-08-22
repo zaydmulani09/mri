@@ -11,6 +11,28 @@ concentrates. It is **not** an LLM guessing about your code — resolution is
 deterministic, and when a reference cannot be proven, the graph says so
 instead of inventing an edge.
 
+## Watch it work
+
+Real terminal recordings (captured with
+[examples/recordings/capture.mjs](examples/recordings/capture.mjs); replay
+with `asciinema play <file>` or read the `.txt` transcript alongside):
+
+- **[analyze-got.cast](examples/recordings/analyze-got.cast)** — `mri analyze`
+  against [sindresorhus/got](https://github.com/sindresorhus/got): architecture,
+  dead-code candidates, churn-based risk, import-based coverage — one command,
+  ~33 seconds.
+- **[ask-got.cast](examples/recordings/ask-got.cast)** — `mri ask` refusing to
+  guess on an ambiguous name ("noop" matches two symbols), then answering
+  "who calls calculateRetryDelay" and "what is the riskiest file" strictly from
+  graph facts.
+- **[containment.cast](examples/recordings/containment.cast)** — `mri guard`:
+  the allowlist receipt for a billing-module scope, in-scope code executing
+  cleanly, then an attempted `.env` read blocked pre-execution with the exact
+  violated rule (`resources.filesystem`, zero grants).
+
+Every recording is a real run against real repositories — no staged output.
+The fixture used by the containment recording ships in
+[examples/recordings/fixture](examples/recordings/fixture).
 ## The core idea
 
 Most code-intelligence tools optimize for plausible-looking answers. mri
