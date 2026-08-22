@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { detectLanguage } from "./languages.js";
+import { detectLanguage, type LanguageId } from "./languages.js";
 import { parserFor } from "./loader.js";
 import { extractJavaScript } from "./javascript.js";
 import { extractPython } from "./python.js";
@@ -22,7 +22,7 @@ export async function extractFile(
   const absolutePath = path.resolve(filePath);
   const source = await fs.readFile(absolutePath, "utf8");
   const parser = parserFor(language);
-  const tree = parser.parse(source);
+  const tree = parser.parse(normalizeSource(source, language));
 
   const partial =
     language === "python" ? extractPython(tree.rootNode) : extractJavaScript(tree.rootNode);
@@ -32,6 +32,35 @@ export async function extractFile(
     language,
     hasParseErrors: tree.rootNode.hasError,
     ...partial,
+  };
+}
+
+// The bundled tree-sitter-typescript (0.23.2, newest published) predates
+// TypeScript 5.0's `export type *` syntax and emits ERROR nodes for it.
+// Dropping the word "type" — padded with spaces so every byte offset and
+// line number stays identical — turns it into plain `export *`, which the
+// grammar handles and which preserves the export-all semantics extraction
+// cares about.
+function normalizeSource(source: string, language: LanguageId): string {
+  if (language !== "typescript" && language !== "tsx") return source;
+  return source.replace(
+    /export(\s+)type(\s+)\*/g,
+    (_match, before: string, after: string) =>
+      `export${before}${" ".repeat(after.length)}*`,
+  );
+}
+
+function emptyFileSymbols(filePath: string): FileSymbols {
+  return {
+    path: filePath,
+    language: "javascript",
+    hasParseErrors: true,
+    functions: [],
+    classes: [],
+    imports: [],
+    exports: [],
+    calls: [],
+    references: [],
   };
 }
 
@@ -46,9 +75,15 @@ export async function extractRepo(root: string): Promise<RepoExtraction> {
   const files = await walkSourceFiles(absoluteRoot);
   const extracted: FileSymbols[] = [];
   for (const relativeFile of files) {
-    extracted.push(
-      await extractFile(path.join(absoluteRoot, relativeFile), { root: absoluteRoot }),
-    );
+    try {
+      extracted.push(
+        await extractFile(path.join(absoluteRoot, relativeFile), { root: absoluteRoot }),
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`mri: extraction failed for ${relativeFile}: ${message}`);
+      extracted.push(emptyFileSymbols(relativeFile));
+    }
   }
   return {
     root: absoluteRoot.split(path.sep).join("/"),
