@@ -9,6 +9,8 @@ import {
   parseQuestion,
   buildReasoningContext,
   executeQuery,
+
+  renderAnswer,
 } from "../src/reasoning/index.js";
 
 const fixtureRoot = path.join(
@@ -108,6 +110,19 @@ describe("question parser", () => {
     if (!result.ok) return;
     expect(result.query.type).toBe("dead-code-check");
   });
+
+  it("parses pasted-back candidate node ids as blast-radius targets", () => {
+    const result = parseQuestion("blast radius of fn:src/process_a.js#process");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.query.type).toBe("blast-radius");
+    if (result.query.type !== "blast-radius") return;
+    expect(result.query.target).toBe("fn:src/process_a.js#process");
+  });
+
+  it("still rejects out-of-scope questions after id support was added", () => {
+    expect(parseQuestion("who is the strongest avenger").ok).toBe(false);
+  });
 });
 
 describe("query executor", () => {
@@ -131,6 +146,29 @@ describe("query executor", () => {
     const ids = answer.result.dependents.map((d) => d.id);
     expect(ids).toContain("fn:src/format.js#money");
     expect(ids).toContain("fn:src/api.js#fetchUser");
+  });
+
+  it("resolves a disambiguation candidate id pasted back into a follow-up question", () => {
+    const ctx = buildReasoningContext(store, tmpRepo, 90);
+
+    const first = executeQuery(ctx, { type: "blast-radius", target: "process" });
+    expect(first.kind).toBe("ambiguous-target");
+    if (first.kind !== "ambiguous-target") return;
+    const printedIds = first.candidates.map((c) => c.id);
+    expect(printedIds).toContain("fn:src/process_a.js#process");
+
+    const reparsed = parseQuestion(`blast radius of ${printedIds[0]}`);
+    expect(reparsed.ok).toBe(true);
+    if (!reparsed.ok || reparsed.query.type !== "blast-radius") return;
+    expect(reparsed.query.target).toBe(printedIds[0]);
+
+    const second = executeQuery(ctx, reparsed.query);
+    expect(second.kind).toBe("blast-radius");
+    if (second.kind !== "blast-radius") return;
+    expect(second.result.root.id).toBe("fn:src/process_a.js#process");
+
+    const rendered = renderAnswer(second);
+    expect(rendered).toContain("dependent");
   });
 
   it("reports dead-code verdicts with confidence labels", () => {
