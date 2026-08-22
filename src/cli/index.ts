@@ -14,7 +14,8 @@ import {
   createDefaultLlmClient,
   executeQuery,
   narrateAnswer,
-  parseQuestionSmart,
+  parseQuestion,
+  renderAnswer,
 } from "../reasoning/index.js";
 
 const USAGE = `mri - code intelligence engine
@@ -541,7 +542,7 @@ async function runAsk(args: AskArgs): Promise<number> {
     const store = openGraph(dbPath);
     try {
       const context = buildReasoningContext(store, args.target, windowDays);
-      const parsed = await parseQuestionSmart(args.question, createDefaultLlmClient());
+      const parsed = parseQuestion(args.question);
       if (!parsed.ok) {
         process.stderr.write(`${parsed.reason}\n`);
         return 1;
@@ -556,7 +557,15 @@ async function runAsk(args: AskArgs): Promise<number> {
     return 1;
   }
 
-  process.stdout.write((await narrateAnswer(answer, createDefaultLlmClient())) + "\n");
+  const client = createDefaultLlmClient();
+  const modelAvailable = client.isAvailable ? await client.isAvailable() : false;
+  if (!modelAvailable) {
+    process.stdout.write(
+      "(local model not available — showing raw result)\n\n" + renderAnswer(answer) + "\n",
+    );
+    return 0;
+  }
+  process.stdout.write((await narrateAnswer(answer, client)) + "\n");
   return 0;
 }
 
