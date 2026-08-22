@@ -1,14 +1,17 @@
-export function destroyLateRequestResult(response) {
+function destroyLateRequestResult(response) {
   return response;
 }
 
-export function registerLateHandlers(registry) {
+const noop = () => {};
+
+function registerLateHandlers(registry) {
   registry.on("close", destroyLateRequestResult);
-  return [destroyLateRequestResult];
+  registry.on("error", noop);
+  return [destroyLateRequestResult, noop];
 }
 
-export const cleanup = destroyLateRequestResult;
+const cleanup = destroyLateRequestResult;
 
-export function directCall() {
+function directCall() {
   return destroyLateRequestResult(1);
 }

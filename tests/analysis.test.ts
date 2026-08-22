@@ -78,7 +78,8 @@ describe("analysis passes", () => {
     expect(byId.get("fn:src/callbacks.js#registerLateHandlers")).toBe(
       "confirmed-unreferenced",
     );
-    expect(dead).toHaveLength(5);
+    expect(dead).toHaveLength(7);
+    expect(byId.get("fn:src/callbacks.js#lateNoop")).toBe("referenced-but-uncalled");
   });
 
   it("never flags pass-by-referenced functions as confirmed-unreferenced", () => {
