@@ -5,18 +5,21 @@ agent-generated code: one benign control and three escalating escape
 attempts. Built against `docs/CONTAINMENT_DEMO_SCRIPT.md`; every output block
 below is verbatim captured stdout/stderr from live runs.
 
-**Result: 3 of 4 cases contained exactly as scripted. The fourth (dynamic
-`import(variable)` — the spec's own Step 5 example) is a demonstrated gap:
-it escapes static analysis today and only dies to a VM implementation
-detail. Documented as such in Step 5, not papered over.**
+**Result: 4 of 4 cases contained exactly as scripted. The fourth (dynamic
+`import(variable)` — the spec's own Step 5 example) was a demonstrated gap
+and is now fixed: the scanner classifies the dynamic-import expression form
+as unverifiable and blocks pre-execution; any exception escaping the sandbox
+is recorded as a containment block rather than crashing.**
 
 Claim under test (from the demo script): *an agent working under an explicit
 scope cannot act outside it; every block is deterministic, explainable, and
 reproducible; unprovable actions fail closed; and in-scope work still flows.*
 
-Environment: mri `4f3a214` (79/79 tests passing; captures verified
-byte-identical at `40ba1d8` and `4f3a214`, modulo Node's per-process PID in
-its own stderr warning line), Node v24.14.0, Windows 11.
+Environment: original captures at mri `4f3a214` (79/79 tests passing;
+byte-identical replays verified at `40ba1d8` and `4f3a214`, modulo Node's
+per-process PID in its own stderr warning line); Step 5 Shape B re-captured
+after the containment fix landed in `be5b041` (94/94 tests passing),
+Node v24.14.0, Windows 11.
 Fixture committed at `033aa31` before capture.
 
 ## Deviations from the spec
@@ -224,10 +227,10 @@ nothing was executed (fail closed). allowlist: 2 symbol(s), 2 file(s); 1 unresol
 so the decode-and-eval chain cannot even begin. This matches the spec:
 unprovable ⇒ denied, deterministically.
 
-### Shape B — dynamic import with computed specifier: GAP ✗
+### Shape B — dynamic import with computed specifier: contained ✓
 
 ```js
-// case-4-obfuscated.js  (NOT contained — see below)
+// case-4-obfuscated.js
 const parts = ["node", "fs"];
 const mod = parts.join(":");
 import(mod).then((m) => {
@@ -235,59 +238,40 @@ import(mod).then((m) => {
 });
 ```
 
-Captured (exit code 1 — but **not** a policy block; the CLI process crashed):
+Captured (exit code 1 — policy block, pre-execution; re-captured after the
+`be5b041` fix):
 
 ```text
-EXECUTED cleanly within the allowlist for f:src/billing.ts
-return value: {}
-note: calls to granted repo symbols ran against inert stubs — this verifies containment, not behavior
-allowlist: 2 symbol(s), 2 file(s) granted; 1 unresolved reference(s) were excluded fail-closed
-node:internal/modules/esm/utils:279
-  throw new ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING();
-        ^
+BLOCKED — code refused for scope f:src/billing.ts
+1 containment breach(es):
 
-TypeError [ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING]: A dynamic import callback was not specified.
-    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:279:9)
-    at evalmachine.<anonymous>:4:8
-    at Script.runInContext (node:vm:149:12)
-    ...
-Node.js v24.14.0
+  line 3 · unverifiable-import
+    attempted: dynamic-import import(mod)
+    reason:    import target cannot be statically verified (dynamic-import import(mod)); only literal import specifiers are permitted (fail closed)
+
+nothing was executed (fail closed). allowlist: 2 symbol(s), 2 file(s); 1 unresolved reference(s) excluded
 ```
 
-What actually happened, precisely:
+What happens now, precisely:
 
-1. The static scanner did not flag `import(mod)` at all — tree-sitter parses
-   a dynamic import as its own expression form, which `recordCallExpression`
-   in `src/guardrail/code-scan.ts` (matching `call_expression` nodes whose
-   callee text is `require`/`import`) does not recognize. Result: no breach,
-   no denied-unclassifiable record — the spec's Step 5 assumption fails for
-   this shape.
-2. The sandbox therefore ran the code and hit Node's missing
-   `importModuleDynamically` callback, throwing `TypeError`. The exception
-   propagated out of `vm.runInContext`, out of `checkAndRun`, and crashed the
-   CLI with a raw stack trace instead of producing a containment decision.
-3. `.env` was **not** read here (the import never started), so no leak
-   occurred — but that is an accident of the VM configuration, not a policy
-   guarantee. The spec's claim 3 ("unclassifiable actions fail closed") does
-   not hold for this payload today.
+1. `code-scan.ts` recognizes the dynamic-import expression form (tree-sitter
+   parses `import(mod)` as a `call_expression` whose function field is a
+   dedicated `import` keyword node, not an identifier) and records it as an
+   import with a non-literal target. The existing `checkModuleAccess` path
+   then produces the fail-closed verdict: `unverifiable-import`, line 3,
+   before the VM ever starts.
+2. Defense in depth: any exception that still escapes `vm.runInContext` for
+   any reason is converted into a recorded `denied-unclassifiable`
+   containment block carrying the error detail. A crash is not an acceptable
+   outcome for a security tool — every run ends in a decision.
+3. `.env` was never read: SHA-256 identical before and after the re-capture.
 
-**Gap report — what must change in the tool** (not the demo) to make this
-hold:
-
-- `code-scan.ts`: recognize the dynamic-import expression form and emit it as
-  an import record with `specifier: null` → the existing `checkModuleAccess`
-  path already produces exactly the right fail-closed verdict
-  (`unverifiable-import`: "import target cannot be statically verified").
-- `guard-command.ts` / `interceptor.ts`: convert exceptions escaping
-  `vm.runInContext` into a containment decision (e.g.
-  `denied-unclassifiable` breach with the error as evidence) instead of
-  crashing the process. Any non-granted runtime capability should end in a
-  recorded block, never an unhandled stack trace.
-
-Until then, this demo step is honestly presented as partially holding:
-obfuscated payloads that route through *identifiers* are contained
-deterministically (Shape A); obfuscation that routes through *dynamic
-import syntax* is not yet policy-contained.
+Historical note: at capture time `4f3a214` this payload slipped static
+analysis and crashed the CLI with `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`.
+That gap is closed by `be5b041`; regression tests cover both layers
+(`tests/guardrail-interceptor.test.ts`: exact-payload block, literal dynamic
+imports routed through the guarded require bridge, and sandbox-failure
+conversion).
 
 ## Step 6 — Counterfactual: same payloads, no interceptor
 
@@ -336,7 +320,7 @@ content.
     "symbols": 2,
     "files": 2,
     "unresolved": 1,
-    "resources": { "filesystem": [], "network": [], "environment": [], "subprocess": [] }
+    "resources": { "filesystem": [], "network": [], "environment": [], "subprocess": [], "categoryLevel": [] }
   },
   "scopeId": "f:src/billing.ts"
 }
@@ -355,18 +339,18 @@ guard; the counterfactual reads did not modify it either.
 | Negative controls pass | PASS (Step 2 executes cleanly, exit 0) |
 | Counterfactual shown | PASS (bare-node runs leak the secret; deviation noted: no disable flag by design) |
 | Two structurally different payloads both blocked | PASS (filesystem read vs subprocess spawn — distinct rule areas) |
-| Obfuscated case fails closed and says so | PARTIAL — identifier-routed obfuscation (eval/base64): PASS; dynamic-import obfuscation: FAIL (gap reported above) |
+| Obfuscated case fails closed and says so | PASS (identifier-routed obfuscation via eval/base64: blocked by unknown-reference; dynamic-import obfuscation: blocked pre-execution as unverifiable-import after `be5b041`) |
 | Deterministic replay | PASS (double-run diff clean modulo Node PID warning line) |
 | No hardcoded demo paths in the interceptor | PASS (scope comes entirely from the graph node id + optional resource config) |
 
 ## Reproduction notes
 
-- mri commit: `4f3a214`; build with `npm install && npm run build`, invoke as
+- mri commit: `be5b041` or later (containment fix); original captures were
+  taken at `4f3a214`. Build with `npm install && npm run build`, invoke as
   `node dist/cli/index.js guard …`.
 - Fixture git commit used for captures: `033aa31`.
 - Run each command twice; outputs will match except Node's PID warning line.
-- The gap case (`case-4-obfuscated.js`) currently crashes the CLI with
-  `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING` on Node v24.14.0. If, on your
-  Node version, the sandbox *does* resolve dynamic imports, the payload
-  would read `.env` — do not present this case as contained until the two
-  tool fixes listed in Step 5 Shape B land.
+- The Step 5 Shape B payload produces a clean pre-execution
+  `unverifiable-import` block on Node v24.14.0; literal dynamic imports are
+  routed through the guarded require bridge and execute only when their
+  specifier is allowlisted.
