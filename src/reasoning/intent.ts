@@ -5,7 +5,7 @@ export type ReasoningQuery =
   | { type: "untested"; scope?: string };
 
 export type ParseResult =
-  | { ok: true; query: ReasoningQuery; via: "deterministic" | "llm" }
+  | { ok: true; query: ReasoningQuery }
   | { ok: false; reason: string };
 
 export const SUPPORTED_INTENTS: readonly string[] = [
