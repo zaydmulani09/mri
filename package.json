@@ -15,7 +15,8 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:dashboard": "npm --prefix dashboard run build"
   },
   "dependencies": {
     "ignore": "^7.0.6",
