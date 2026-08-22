@@ -94,7 +94,9 @@ function recordUse(declaration: Node, acc: RustExtraction): void {
   if (!argument) return;
 
   const line = startLine(declaration);
-  const specifier = argument.text;
+  // Grouped use lists span lines in the wild; collapse whitespace so
+  // downstream output (external module listings) stays single-line.
+  const specifier = argument.text.replace(/\s+/g, " ");
 
   // A plain `use a::b;` binds the last segment locally; grouped and glob
   // forms bind exactly the named items (a glob binds nothing provable, so
