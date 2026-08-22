@@ -1,7 +1,9 @@
 .vscode/**
 src/**
-node_modules/**
-out/**
+node_modules/
+out/
+scripts/
+docs/
 .gitignore
 vitest.config.ts
 **/*.map

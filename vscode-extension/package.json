@@ -1,11 +1,12 @@
 {
   "name": "mri-vscode",
   "displayName": "MRI Code Intelligence",
-  "description": "Surfaces MRI analysis inline: risk scores, blast radius, and fail-closed guard checks while you edit.",
+  "description": "Surfaces MRI's analysis inline while editing: risk scores, blast radius, dead code, coverage, and fail-closed guard checks.",
   "version": "0.1.0",
   "publisher": "zaydmulani",
   "license": "MIT",
   "private": true,
+  "icon": "icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/zaydmulani09/mri"
@@ -14,8 +15,18 @@
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Other",
-    "Linters"
+    "Linters",
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "code intelligence",
+    "static analysis",
+    "risk score",
+    "blast radius",
+    "dead code",
+    "test coverage",
+    "sandbox"
   ],
   "main": "./out/extension.js",
   "activationEvents": [
@@ -26,6 +37,11 @@
       {
         "command": "mri.refreshAnalysis",
         "title": "MRI: Refresh analysis for this workspace",
+        "category": "MRI"
+      },
+      {
+        "command": "mri.analyzeWorkspace",
+        "title": "MRI: Analyze Workspace",
         "category": "MRI"
       },
       {
@@ -43,30 +59,42 @@
       "title": "MRI",
       "properties": {
         "mri.entryPoint": {
+          "order": 0,
           "type": "string",
           "default": "",
-          "markdownDescription": "Absolute path to MRI's CLI entry point (`dist/cli/index.js`). Leave empty to auto-detect: the workspace itself, a sibling `../mri` checkout, then `mri` on PATH."
-        },
-        "mri.churnWindowDays": {
-          "type": "number",
-          "default": 90,
-          "minimum": 1,
-          "description": "Git churn window (days) used for risk scoring."
+          "markdownDescription": "Path to MRI's CLI entry point (`dist/cli/index.js`). Leave empty to auto-detect: the workspace itself, a sibling `../mri` checkout, then `mri` on PATH."
         },
         "mri.codeLensEnabled": {
+          "order": 1,
           "type": "boolean",
           "default": true,
           "description": "Show risk score and blast-radius CodeLenses above functions/classes."
         },
         "mri.autoRefreshOnSave": {
+          "order": 2,
           "type": "boolean",
           "default": true,
           "description": "Re-run MRI analysis when a file is saved (debounced), instead of on every keystroke."
         },
+        "mri.saveDebounceMs": {
+          "order": 3,
+          "type": "number",
+          "default": 700,
+          "minimum": 100,
+          "description": "How long to wait after a save before re-running analysis (coalesces rapid saves)."
+        },
+        "mri.churnWindowDays": {
+          "order": 4,
+          "type": "number",
+          "default": 90,
+          "minimum": 1,
+          "description": "Git churn window (days) used for risk scoring."
+        },
         "mri.guardResourcesPath": {
+          "order": 5,
           "type": "string",
           "default": "",
-          "description": "Optional absolute path to a guard resource-grant JSON config passed as --resources."
+          "markdownDescription": "Optional path to a guard resource-grant JSON config passed as `--resources`. See MRI's resource-grant schema."
         }
       }
     }
@@ -74,7 +102,8 @@
   "scripts": {
     "compile": "tsc -p ./",
     "typecheck": "tsc -p ./ --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "make-icon": "node scripts/make-icon.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
