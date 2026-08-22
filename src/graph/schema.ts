@@ -11,6 +11,7 @@ export const EdgeType = {
   Defines: "defines",
   Calls: "calls",
   Inherits: "inherits",
+  References: "references",
 } as const;
 export type EdgeTypeValue = (typeof EdgeType)[keyof typeof EdgeType];
 

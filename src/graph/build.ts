@@ -35,6 +35,7 @@ export async function buildRepoGraph(
     store.db.exec("BEGIN");
     try {
       writeSymbolNodes(store, extraction.files);
+      writeReferenceEdges(store, extraction.files);
 
       const resolvedImportsByFile = await resolveAndWriteImports(
         store,
@@ -146,6 +147,52 @@ function writeSymbolNodes(store: GraphStore, files: FileSymbols[]): void {
       }
     }
   }
+}
+
+function writeReferenceEdges(store: GraphStore, files: FileSymbols[]): void {
+  for (const symbols of files) {
+    const posixPath = symbols.path;
+    const fileNodeId = fileId.build(posixPath);
+
+    const localSymbols = new Map<string, string>();
+    for (const fn of symbols.functions) {
+      localSymbols.set(fn.name, functionId(posixPath, fn.name));
+    }
+    for (const cls of symbols.classes) {
+      localSymbols.set(cls.name, classId(posixPath, cls.name));
+      for (const method of cls.methods) {
+        localSymbols.set(method.name, methodId(posixPath, cls.name, method.name));
+      }
+    }
+
+    const seen = new Set<string>();
+    for (const reference of symbols.references) {
+      const targetId = localSymbols.get(reference.name);
+      if (!targetId) continue;
+
+      const srcId = containerNodeId(posixPath, reference.container) ?? fileNodeId;
+      const dedupeKey = `${srcId}->${targetId}`;
+      if (srcId === targetId || seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+
+      store.addEdge({
+        src: srcId,
+        dst: targetId,
+        type: EdgeType.References,
+        line: reference.line,
+      });
+    }
+  }
+}
+
+function containerNodeId(path: string, container: string): string | null {
+  const dotIndex = container.indexOf(".");
+  if (dotIndex !== -1) {
+    const className = container.slice(0, dotIndex);
+    const methodName = container.slice(dotIndex + 1);
+    return methodId(path, className, methodName);
+  }
+  return functionId(path, container);
 }
 
 async function resolveAndWriteImports(
