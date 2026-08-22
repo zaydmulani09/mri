@@ -30,7 +30,7 @@ Match what's already in the codebase:
 
 - **TypeScript strict mode, ESM** — relative imports carry the `.js`
   extension (`./types.js`).
-- **Few dependencies.** Runtime deps are currently three tree-sitter
+- **Few dependencies.** Runtime deps are currently four tree-sitter
   grammars plus `ignore`. Anything new needs a strong reason.
 - **Plain data in, plain data out.** Interfaces for shapes, functions for
   behavior; classes only where state genuinely warrants them (the SQLite

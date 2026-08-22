@@ -77,6 +77,7 @@ extraction on the graph, or of analysis on extraction.
 | TypeScript | `.ts` `.mts` `.cts` | tree-sitter-typescript |
 | TSX | `.tsx` | tree-sitter-typescript (tsx grammar) |
 | Python | `.py` | tree-sitter-python |
+| Go | `.go` | tree-sitter-go |
 
 Parsing is per-file and best-effort: a file with syntax errors still yields
 symbols, flagged via `hasParseErrors` (from tree-sitter's `rootNode.hasError`).
@@ -118,11 +119,20 @@ Language-specific notes:
   treated as exported); `self.x()`, `cls.x()` and `super().x()` calls are
   classified as their own kinds so they resolve through the inheritance
   chain rather than as opaque member calls.
+- **Go**: function declarations become functions; structs and interfaces
+  become class nodes whose embedded types are recorded as bases; receiver
+  methods (value and pointer) attach to their receiver type, with a call
+  through the receiver name classified like `self` so it resolves along the
+  type's method chain. Exported status follows Go's capitalization rule.
+  Imports record named (`alias "path"`), blank (`_ "path"`), and dot forms,
+  with the local package name defaulting to the last path segment.
 
 Known extraction limits (by design, today):
 
 - Only top-level symbols are nodes; functions/classes nested inside other
-  functions are not extracted.
+  functions are not extracted. (In Go this means methods on types declared
+  in *another file* of the same package have no host node in this file and
+  their call sites are dropped.)
 - Intermediate calls are suppressed: in `a.b().c()`, only `c` is recorded,
   since recording `b` as a standalone target would be noise.
 - Call sites at module top level (outside any function/method) have no
@@ -199,6 +209,10 @@ earns a `resolved` edge, and what stays ambiguous.
 - Python: dotted module paths are searched from the repo root (absolute
   imports) or from the importer's package directory computed from leading-dot
   count (relative imports); candidates are `<pkg>.py` and `<pkg>/__init__.py`.
+- Go: a specifier is internal only when it equals or extends the module path
+  declared in `<root>/go.mod` and the target package directory contains Go
+  sources; the edge destination is the first `.go` file of that directory in
+  sorted order. Everything else is external.
 - Anything resolving outside the repo root is treated as external.
 - Imports always produce a concrete `dst` (internal file or external module)
   — there are no ambiguous imports today.
