@@ -4,6 +4,7 @@ import { detectLanguage, type LanguageId } from "./languages.js";
 import { parserFor } from "./loader.js";
 import { extractJavaScript } from "./javascript.js";
 import { extractPython } from "./python.js";
+import { extractGo } from "./go.js";
 import { walkSourceFiles } from "./walker.js";
 import type { FileSymbols } from "./types.js";
 
@@ -25,7 +26,11 @@ export async function extractFile(
   const tree = parser.parse(normalizeSource(source, language));
 
   const partial =
-    language === "python" ? extractPython(tree.rootNode) : extractJavaScript(tree.rootNode);
+    language === "python"
+      ? extractPython(tree.rootNode)
+      : language === "go"
+        ? extractGo(tree.rootNode)
+        : extractJavaScript(tree.rootNode);
 
   return {
     path: displayPath(absolutePath, options.root),
