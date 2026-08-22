@@ -9,9 +9,13 @@
 > host. For a security tool, overclaiming is worse than underclaiming; this
 > document errs toward the blunt end.
 >
-> Implementation status note: allowlist generation and the grant schema are
-> committed (`src/guardrail/generate.ts`, d4b6eb0); the scan/interceptor
-> files described here are present in the working tree and in flight.
+> Implementation status note: allowlist generation, the AST scanner, the
+> check-and-run interceptor, and the breach taxonomy are committed and wired
+> into the CLI as `mri guard <scope-id> <file>`. Fail-closed behavior is
+> verified end-to-end against a real codebase (sindresorhus/got at mri
+> `40ba1d8`): ungranted imports are refused before anything executes, and
+> in-scope code runs against inert stubs — captured verbatim in
+> `examples/reports/got-analysis.md`. The limitations below all still apply.
 
 ## Assets being protected
 
