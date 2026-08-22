@@ -28,6 +28,12 @@ export interface CallSite {
   container: string;
 }
 
+export interface ReferenceSite {
+  name: string;
+  line: number;
+  container: string;
+}
+
 export interface ImportSymbol {
   specifier: string;
   defaultImport: string | null;
@@ -53,4 +59,5 @@ export interface FileSymbols {
   imports: ImportSymbol[];
   exports: ExportSymbol[];
   calls: CallSite[];
+  references: ReferenceSite[];
 }

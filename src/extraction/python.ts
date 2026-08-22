@@ -7,6 +7,7 @@ import type {
   FunctionSymbol,
   ImportSymbol,
   MethodSymbol,
+  ReferenceSite,
 } from "./types.js";
 
 type Node = Parser.SyntaxNode;
@@ -17,6 +18,7 @@ export interface PythonExtraction {
   imports: ImportSymbol[];
   exports: ExportSymbol[];
   calls: CallSite[];
+  references: ReferenceSite[];
 }
 
 export function extractPython(root: Node): PythonExtraction {
@@ -26,10 +28,12 @@ export function extractPython(root: Node): PythonExtraction {
     imports: [],
     exports: [],
     calls: [],
+    references: [],
   };
   for (const child of root.namedChildren) {
     visitTopLevelStatement(child, acc);
   }
+  collectReferences(root, acc);
   return acc;
 }
 
@@ -189,6 +193,57 @@ function collectCalls(root: Node, container: string, acc: PythonExtraction): voi
   });
 }
 
+const DECLARATION_NAME_PARENTS = new Set([
+  "function_definition",
+  "class_definition",
+]);
+
+const REFERENCE_SKIP_SUBTREES = new Set([
+  "import_statement",
+  "import_from_statement",
+  "parameters",
+]);
+
+function collectReferences(root: Node, acc: PythonExtraction): void {
+  const localBindings = new Set<string>();
+  const noteLocalBindings = (node: Node): void => {
+    if (node.type !== "identifier") {
+      for (const child of node.namedChildren) noteLocalBindings(child);
+      return;
+    }
+    const parent = node.parent;
+    if (!parent) return;
+    if (
+      parent.type === "assignment" &&
+      parent.childForFieldName("left")?.id === node.id
+    ) {
+      localBindings.add(node.text);
+      return;
+    }
+    if (REFERENCE_SKIP_SUBTREES.has(parent.type)) {
+      localBindings.add(node.text);
+    }
+  };
+  noteLocalBindings(root);
+
+  const visit = (node: Node): void => {
+    if (REFERENCE_SKIP_SUBTREES.has(node.type)) return;
+    if (node.type === "identifier") {
+      if (isCalleeOrAttributePosition(node)) return;
+      if (isSymbolDeclarationName(node)) return;
+      if (localBindings.has(node.text)) return;
+      acc.references.push({
+        name: node.text,
+        line: startLine(node),
+        container: "<file>",
+      });
+      return;
+    }
+    for (const child of node.namedChildren) visit(child);
+  };
+  visit(root);
+}
+
 function walkNamed(node: Node, visit: (n: Node) => void): void {
   for (const child of node.namedChildren) {
     visit(child);
@@ -208,6 +263,36 @@ function isIntermediateCall(node: Node): boolean {
     if (object && object.id === node.id) return true;
   }
   return false;
+}
+
+function isCalleeOrAttributePosition(node: Node): boolean {
+  const parent = node.parent;
+  if (!parent) return true;
+  if (parent.type === "call") {
+    const callee = parent.childForFieldName("function");
+    if (callee && callee.id === node.id) return true;
+  }
+  if (parent.type === "attribute") {
+    const attribute = parent.childForFieldName("attribute");
+    if (attribute && attribute.id === node.id) return true;
+  }
+  if (
+    parent.type === "keyword_argument" &&
+    parent.childForFieldName("name")?.id === node.id
+  ) {
+    return true;
+  }
+  if (parent.type === "aliased_import" && parent.childForFieldName("alias")?.id === node.id) {
+    return true;
+  }
+  return false;
+}
+
+function isSymbolDeclarationName(node: Node): boolean {
+  const parent = node.parent;
+  if (!parent || !DECLARATION_NAME_PARENTS.has(parent.type)) return false;
+  const nameNode = parent.childForFieldName("name");
+  return nameNode !== null && nameNode.id === node.id;
 }
 
 function classifyCallee(

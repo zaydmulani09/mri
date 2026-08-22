@@ -7,6 +7,7 @@ import type {
   FunctionSymbol,
   ImportSymbol,
   MethodSymbol,
+  ReferenceSite,
 } from "./types.js";
 
 type Node = Parser.SyntaxNode;
@@ -17,6 +18,7 @@ export interface JavaScriptExtraction {
   imports: ImportSymbol[];
   exports: ExportSymbol[];
   calls: CallSite[];
+  references: ReferenceSite[];
 }
 
 const FUNCTION_VALUE_TYPES = new Set([
@@ -32,10 +34,12 @@ export function extractJavaScript(root: Node): JavaScriptExtraction {
     imports: [],
     exports: [],
     calls: [],
+    references: [],
   };
   for (const child of root.namedChildren) {
     visitTopLevelStatement(child, acc);
   }
+  collectReferences(root, acc);
   return acc;
 }
 
@@ -362,6 +366,114 @@ function collectCalls(root: Node, container: string, acc: JavaScriptExtraction):
       }
     }
   });
+}
+
+const REFERENCE_IDENTIFIER_TYPES = new Set([
+  "identifier",
+  "shorthand_property_identifier",
+]);
+
+const REFERENCE_SKIP_SUBTREES = new Set([
+  "formal_parameters",
+  "required_parameter",
+  "rest_parameter",
+  "pattern",
+  "import_statement",
+]);
+
+function collectReferences(root: Node, acc: JavaScriptExtraction): void {
+  const localBindings = new Set<string>();
+  const noteLocalBindings = (node: Node): void => {
+    if (node.type !== "identifier") {
+      for (const child of node.namedChildren) noteLocalBindings(child);
+      return;
+    }
+    const parent = node.parent;
+    if (!parent) return;
+    if (
+      parent.type === "variable_declarator" &&
+      parent.childForFieldName("name")?.id === node.id
+    ) {
+      localBindings.add(node.text);
+      return;
+    }
+    if (
+      parent.type === "assignment_expression" &&
+      parent.childForFieldName("left")?.id === node.id
+    ) {
+      localBindings.add(node.text);
+      return;
+    }
+    if (
+      parent.type === "formal_parameters" ||
+      parent.type === "required_parameter" ||
+      parent.type === "rest_parameter" ||
+      parent.type === "pattern"
+    ) {
+      localBindings.add(node.text);
+    }
+  };
+  noteLocalBindings(root);
+
+  const visit = (node: Node): void => {
+    if (REFERENCE_SKIP_SUBTREES.has(node.type)) return;
+    if (REFERENCE_IDENTIFIER_TYPES.has(node.type)) {
+      if (!isSymbolDeclarationName(node) && !isCalleeOrPropertyPosition(node)) {
+        if (!localBindings.has(node.text)) {
+          acc.references.push({
+            name: node.text,
+            line: startLine(node),
+            container: "<file>",
+          });
+        }
+      }
+      return;
+    }
+    for (const child of node.namedChildren) visit(child);
+  };
+  visit(root);
+}
+
+const SYMBOL_DECLARATION_PARENTS = new Set([
+  "function_declaration",
+  "generator_function_declaration",
+  "class_declaration",
+  "abstract_class_declaration",
+]);
+
+function isSymbolDeclarationName(node: Node): boolean {
+  const parent = node.parent;
+  if (!parent || !SYMBOL_DECLARATION_PARENTS.has(parent.type)) return false;
+  const nameNode = parent.childForFieldName("name");
+  return nameNode !== null && nameNode.id === node.id;
+}
+
+function isCalleeOrPropertyPosition(node: Node): boolean {
+  const parent = node.parent;
+  if (!parent) return true;
+  if (parent.type === "call_expression" || parent.type === "new_expression") {
+    const callee =
+      parent.childForFieldName("function") ?? parent.childForFieldName("constructor");
+    if (callee && callee.id === node.id) return true;
+  }
+  if (parent.type === "member_expression") {
+    const property = parent.childForFieldName("property");
+    if (property && property.id === node.id) return true;
+  }
+  if (parent.type === "pair") {
+    const key = parent.childForFieldName("key");
+    if (key && key.id === node.id) return true;
+  }
+  if (
+    parent.type === "method_definition" ||
+    parent.type === "field_definition" ||
+    parent.type === "public_field_definition"
+  ) {
+    const nameNode =
+      parent.childForFieldName("name") ?? parent.childForFieldName("property");
+    if (nameNode && nameNode.id === node.id) return true;
+  }
+  return false;
 }
 
 function walkNamed(node: Node, visit: (n: Node) => void): void {
