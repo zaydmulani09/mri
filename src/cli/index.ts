@@ -1,8 +1,15 @@
 #!/usr/bin/env node
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
-import { extractRepo, type RepoExtraction } from "../extraction/index.js";
-import { buildRepoGraph, openGraph, type BuildSummary } from "../graph/index.js";
+import { fileURLToPath } from "node:url";
+import { performance } from "node:perf_hooks";
+import { extractRepo, SOURCE_EXTENSIONS, type RepoExtraction } from "../extraction/index.js";
+import {
+  buildRepoGraph,
+  openGraph,
+  type BuildOptions,
+  type BuildSummary,
+} from "../graph/index.js";
 import {
   computeBlastRadius,
   runAnalysis,
@@ -18,23 +25,35 @@ import {
   renderAnswer,
 } from "../reasoning/index.js";
 import { runGuardCommand } from "./guard-command.js";
+import {
+  createGraphServer,
+  openBrowser,
+  prepareServeContext,
+} from "./serve-command.js";
 
 const USAGE = `mri - code intelligence engine
 
 Usage:
   mri extract <path> [--out <file>]
-  mri build <path> [--db <file>]
+  mri build <path> [--db <file>] [--incremental] [--watch]
   mri blast-radius <node-id> [--format tree] [--db <file>]
   mri analyze <path> [--top <n>] [--window <days>] [--db <file>] [--json]
   mri ask "<question>" <path> [--window <days>]
   mri guard <scope-node-id> <code-file | -> [--path <repo>] [--resources <config.json>]
             [--json] [--timeout-ms <n>]
+  mri serve <path> [--port <n>] [--no-open]
 
 Commands:
   extract       Walk the repository and write per-file symbol data as JSON.
   build         Extract, resolve imports/calls/inheritance, store a graph in
                 SQLite. Prints node/edge counts including how many call edges
                 resolved vs stayed ambiguous.
+                --incremental  reuse cached extractions for files whose
+                               content hash is unchanged; resolution still
+                               runs over the full merged symbol set, so the
+                               result is identical to a full rebuild.
+                --watch        keep running and incrementally rebuild on file
+                               save (implies --incremental). Ctrl+C stops.
   blast-radius  Everything that depends on <node-id>, by depth, with confirmed
                 vs ambiguous-only reachability kept separate.
   analyze       Build the graph and run analysis passes: dead code candidates,
@@ -45,6 +64,8 @@ Commands:
   guard         Check a snippet of code against the allowlist generated for a
                 scope node. Blocked code prints every containment breach and
                 exits non-zero; clean runs print the return value.
+  serve         Build the graph, serve the dashboard from dashboard/dist, and
+                open it in a browser. Binds 127.0.0.1 only.
 
 Options:
   -o, --out <file>    extract: write JSON dump to <file> instead of stdout
@@ -59,6 +80,8 @@ Options:
                       (default: current directory)
       --resources <f> guard: JSON resource-grant config keyed by scope id
       --timeout-ms <n> guard: sandbox execution timeout (default 1000)
+      --port <n>      serve: local port to bind (default 6473)
+      --no-open       serve: do not launch a browser
   -h, --help          Show this help
 `;
 
@@ -163,28 +186,163 @@ async function runExtract(options: CliOptions): Promise<number> {
   return 0;
 }
 
-async function runBuild(options: CliOptions): Promise<number> {
-  if (!options.target) {
+interface BuildArgs {
+  target: string | null;
+  db: string | null;
+  incremental: boolean;
+  watch: boolean;
+}
+
+function parseBuildArgs(argv: string[]): BuildArgs | null {
+  const args: BuildArgs = { target: null, db: null, incremental: false, watch: false };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === undefined) break;
+    switch (arg) {
+      case "--db":
+      case "-d":
+        args.db = argv[++i] ?? null;
+        if (args.db === null) return null;
+        break;
+      case "--incremental":
+        args.incremental = true;
+        break;
+      case "--watch":
+        args.watch = true;
+        args.incremental = true;
+        break;
+      default:
+        if (arg.startsWith("-")) return null;
+        if (args.target === null) args.target = arg;
+        else return null;
+    }
+  }
+  return args.target !== null ? args : null;
+}
+
+function describeStats(stats: {
+  mode: "full" | "incremental";
+  cachedFiles: number;
+  reextractedFiles: number;
+  changedFiles: number;
+  addedFiles: number;
+  removedFiles: number;
+  dependentFiles: number;
+}): string {
+  if (stats.mode === "full") return "full build";
+  return (
+    `incremental: ${stats.reextractedFiles} re-extracted` +
+    ` (${stats.changedFiles} changed, ${stats.addedFiles} added, ${stats.dependentFiles} dependents)` +
+    `, ${stats.cachedFiles} cached, ${stats.removedFiles} removed`
+  );
+}
+
+async function runBuild(args: BuildArgs): Promise<number> {
+  if (!args.target) {
     process.stderr.write(`mri build requires a target path\n\n${USAGE}`);
     return 1;
   }
 
   const dbPath =
-    options.out ?? path.join(path.resolve(options.target), ".mri", "graph.sqlite");
+    args.db ?? path.join(path.resolve(args.target), ".mri", "graph.sqlite");
   await fs.mkdir(path.dirname(path.resolve(dbPath)), { recursive: true });
 
-  let result: BuildSummary;
+  let result;
   try {
-    result = await buildRepoGraph(options.target, dbPath);
+    result = await timedBuild(args.target, dbPath, { incremental: args.incremental });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(`error: ${message}\n`);
     return 1;
   }
 
-  process.stderr.write(summarizeBuild(result) + "\n");
+  process.stderr.write(summarizeBuild(result.summary) + "\n");
+  process.stderr.write(
+    `${describeStats(result.summary.stats)} in ${result.elapsedMs} ms\n`,
+  );
   process.stderr.write(`Graph written to ${dbPath}\n`);
+
+  if (!args.watch) return 0;
+
+  await watchRepoForBuilds(args.target, dbPath);
   return 0;
+}
+
+async function timedBuild(
+  target: string,
+  dbPath: string,
+  options: BuildOptions,
+): Promise<{ summary: BuildSummary; elapsedMs: number }> {
+  const startedAt = performance.now();
+  const summary = await buildRepoGraph(target, dbPath, options);
+  return { summary, elapsedMs: Math.round(performance.now() - startedAt) };
+}
+
+const WATCH_DEBOUNCE_MS = 120;
+const WATCH_IGNORED_SEGMENTS = new Set([".mri", ".git"]);
+
+async function watchRepoForBuilds(target: string, dbPath: string): Promise<void> {
+  const rootAbs = path.resolve(target);
+  process.stderr.write(
+    `watching ${rootAbs} — incrementally rebuilding on save (Ctrl+C to stop)\n`,
+  );
+
+  let rebuildQueued = false;
+  let rebuilding = false;
+  let debounceTimer: NodeJS.Timeout | null = null;
+
+  const runRebuild = async (): Promise<void> => {
+    rebuilding = true;
+    try {
+      const result = await timedBuild(target, dbPath, { incremental: true });
+      process.stderr.write(
+        `[watch] rebuilt in ${result.elapsedMs} ms — ${describeStats(result.summary.stats)}\n`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`[watch] rebuild failed: ${message}\n`);
+    }
+    rebuilding = false;
+    if (rebuildQueued) {
+      rebuildQueued = false;
+      void runRebuild();
+    }
+  };
+
+  const scheduleRebuild = (): void => {
+    if (rebuilding) {
+      // A change landed mid-rebuild; run one trailing pass so the final
+      // state is always reflected.
+      rebuildQueued = true;
+      return;
+    }
+    if (debounceTimer !== null) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null;
+      void runRebuild();
+    }, WATCH_DEBOUNCE_MS);
+  };
+
+  const watcher = fsWatch(rootAbs, { recursive: true }, (_eventType, filename) => {
+    if (typeof filename === "string") {
+      const posixName = filename.split(path.sep).join("/");
+      const segments = posixName.split("/");
+      if (segments.some((segment) => WATCH_IGNORED_SEGMENTS.has(segment))) return;
+      if (!SOURCE_EXTENSIONS.has(path.extname(posixName))) return;
+    }
+    scheduleRebuild();
+  });
+
+  watcher.on("error", (error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`error: watcher failed: ${message}\n`);
+    watcher.close();
+    process.exitCode = 1;
+  });
+
+  // Keep the process alive for as long as the watcher does; resolve never
+  // resolves under normal operation (Ctrl+C terminates the process).
+  await new Promise<never>(() => {});
 }
 
 function formatBlastRadius(result: ReturnType<typeof computeBlastRadius>): string {
@@ -636,6 +794,87 @@ function parseGuardArgs(argv: string[]): GuardCliArgs | null {
   return args;
 }
 
+interface ServeCliArgs {
+  target: string | null;
+  port: number | null;
+  noOpen: boolean;
+}
+
+function parseServeArgs(argv: string[]): ServeCliArgs | null {
+  const args: ServeCliArgs = { target: null, port: null, noOpen: false };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === undefined) break;
+    switch (arg) {
+      case "--port": {
+        const n = Number(argv[++i]);
+        if (!Number.isFinite(n) || n < 1 || n > 65535) return null;
+        args.port = n;
+        break;
+      }
+      case "--no-open":
+        args.noOpen = true;
+        break;
+      default:
+        if (arg.startsWith("-")) return null;
+        if (args.target === null) args.target = arg;
+        else return null;
+    }
+  }
+  return args;
+}
+
+async function runServe(args: ServeCliArgs): Promise<number> {
+  if (!args.target) {
+    process.stderr.write(`mri serve requires a repository path\n\n${USAGE}`);
+    return 1;
+  }
+
+  process.stderr.write("building graph…\n");
+  let ctx;
+  try {
+    ctx = await prepareServeContext(args.target);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`error: ${message}\n`);
+    return 1;
+  }
+
+  const dashboardDist = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "dashboard",
+    "dist",
+  );
+
+  const port = args.port ?? 6473;
+  const server = createGraphServer(ctx, dashboardDist);
+
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, "127.0.0.1", () => resolve());
+  }).catch((error) => {
+    process.stderr.write(`error: ${error instanceof Error ? error.message : String(error)}\n`);
+    return -1;
+  });
+
+  if (!server.listening) return 1;
+
+  const url = `http://127.0.0.1:${port}`;
+  process.stderr.write(`serving ${ctx.repoRoot}\n${url}  (Ctrl+C to stop)\n`);
+  if (!args.noOpen) openBrowser(url);
+  return new Promise<number>((resolve) => {
+    const shutdown = (): void => {
+      server.close(() => resolve(0));
+      ctx.store.close();
+    };
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+    server.on("close", () => resolve(0));
+  });
+}
+
 async function main(): Promise<number> {
   const argv = process.argv.slice(2);
   const command = argv[0];
@@ -649,7 +888,8 @@ async function main(): Promise<number> {
     command !== "blast-radius" &&
     command !== "analyze" &&
     command !== "ask" &&
-    command !== "guard"
+    command !== "guard" &&
+    command !== "serve"
   ) {
     process.stderr.write(`Unknown command: ${command ?? "<none>"}\n\n${USAGE}`);
     return 1;
@@ -687,6 +927,15 @@ async function main(): Promise<number> {
     return runAsk(args);
   }
 
+  if (command === "serve") {
+    const args = parseServeArgs(rest);
+    if (!args) {
+      process.stderr.write(`Invalid arguments\n\n${USAGE}`);
+      return 1;
+    }
+    return runServe(args);
+  }
+
   if (command === "analyze") {
     const args = parseAnalyzeArgs(rest);
     if (!args) {
@@ -705,17 +954,21 @@ async function main(): Promise<number> {
     return runBlastRadius(args);
   }
 
-  const options =
-    command === "extract"
-      ? parseArgs(rest, { "--out": "out", "-o": "out" })
-      : parseArgs(rest, { "--db": "out", "-d": "out" });
+  if (command === "build") {
+    const args = parseBuildArgs(rest);
+    if (!args) {
+      process.stderr.write(`Invalid arguments\n\n${USAGE}`);
+      return 1;
+    }
+    return runBuild(args);
+  }
+
+  const options = parseArgs(rest, { "--out": "out", "-o": "out" });
   if (!options) {
     process.stderr.write(`Invalid arguments\n\n${USAGE}`);
     return 1;
   }
-
-  if (command === "extract") return runExtract(options);
-  return runBuild(options);
+  return runExtract(options);
 }
 
 main()
