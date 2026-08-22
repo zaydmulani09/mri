@@ -12,6 +12,11 @@ export default defineConfig({
       // All of examples/ is demo and payload material; nothing there is a
       // suite today, and future capture fixtures must not become one.
       "examples/**",
+      // Compiled build output. tsc emits src/*.test.ts as out/*.test.js
+      // (vscode-extension/out) and vite emits dist bundles; compiled test
+      // artifacts must never be rediscovered as suites.
+      "**/out/**",
+      "**/dist/**",
     ],
   },
 });
