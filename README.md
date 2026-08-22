@@ -160,6 +160,11 @@ nothing was executed (fail closed). allowlist: 4 symbol(s), 3 file(s); 2 unresol
 
 Command reference: run `mri --help`.
 
+To run these checks inside another repository's CI, see
+[docs/GITHUB_ACTION.md](docs/GITHUB_ACTION.md) — mri ships composite GitHub
+Actions for scoped containment (`mri guard`) and PR analysis summaries
+(`mri analyze`), and runs them against this repository on every PR.
+
 ### Against a real codebase
 
 The snippets above use a tiny fixture for readability. A full validation run
