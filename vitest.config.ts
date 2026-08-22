@@ -9,6 +9,9 @@ export default defineConfig({
       ...configDefaults.exclude,
       "tests/fixtures/**",
       "examples/recordings/fixture/**",
+      // All of examples/ is demo and payload material; nothing there is a
+      // suite today, and future capture fixtures must not become one.
+      "examples/**",
     ],
   },
 });
