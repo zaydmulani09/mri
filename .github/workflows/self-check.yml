@@ -1,0 +1,107 @@
+name: self-check
+
+# MRI running against its own repository. Every PR here is analyzed and
+# guarded by the tool itself, which is the proof that the GitHub Action works
+# end to end rather than a claim about it.
+#
+# The negative-control job is load-bearing: it asserts that a payload which
+# attempts an exfiltration pattern IS blocked. If containment ever regresses
+# into rubber-wall theater, this workflow goes red.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: self-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-and-tests:
+    name: typecheck and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+
+  analyze-self:
+    name: analyze this repo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: ./.github/actions/mri-analyze
+        with:
+          repo-path: .
+          window-days: 90
+
+  guard-code-path:
+    name: guard control payload (code-path)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/mri-guard
+        with:
+          scope: f:src/analysis/file-kinds.ts
+          code-path: examples/self-check/control-payload.js
+
+  guard-changed-files:
+    name: guard control payload (changed-files)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/mri-guard
+        with:
+          scope: f:src/analysis/file-kinds.ts
+          changed-files: |
+            examples/self-check/control-payload.js
+
+  guard-negative-control:
+    name: exfiltration attempt must stay blocked
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund && npm run build
+      - name: Verify the guard blocks the exfiltration payload (fail closed)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if node dist/cli/index.js guard "f:src/analysis/file-kinds.ts" \
+              examples/self-check/negative-control-payload.js --path . --json \
+              > /tmp/guard-decision.json 2>/tmp/guard-stderr.txt; then
+            echo "::error::negative control EXECUTED cleanly — containment failed, the wall is decorative"
+            cat /tmp/guard-decision.json
+            exit 1
+          fi
+          {
+            echo "### Negative control contained"
+            echo ""
+            echo '```json'
+            cat /tmp/guard-decision.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
