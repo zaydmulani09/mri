@@ -4,8 +4,8 @@
 > because every fact in the graph is either proven or explicitly marked
 > unknown.
 
-mri extracts symbols and structure from JavaScript/TypeScript, Python, and
-Go repositories into a queryable graph, then answers hard structural
+mri extracts symbols and structure from JavaScript/TypeScript, Python, Go,
+and Rust repositories into a queryable graph, then answers hard structural
 questions: what calls this, what depends on it, what looks dead, where risk
 concentrates. It is **not** an LLM guessing about your code — resolution is
 deterministic, and when a reference cannot be proven, the graph says so
@@ -144,7 +144,8 @@ ratio is the fail-closed contract doing its job on real code.
 ## What's inside
 
 - **Extraction** — gitignore-aware walker plus tree-sitter parsers for
-  JavaScript (.js/.jsx/.mjs/.cjs), TypeScript (.ts/.tsx), Python, and Go.
+  JavaScript (.js/.jsx/.mjs/.cjs), TypeScript (.ts/.tsx), Python, Go, and
+  Rust.
 - **Graph** — SQLite store of files, functions, classes, methods and their
   `defines` / `imports` / `calls` / `inherits` relations, built in one
   atomic transaction per repository.

@@ -78,6 +78,7 @@ extraction on the graph, or of analysis on extraction.
 | TSX | `.tsx` | tree-sitter-typescript (tsx grammar) |
 | Python | `.py` | tree-sitter-python |
 | Go | `.go` | tree-sitter-go |
+| Rust | `.rs` | tree-sitter-rust |
 
 Parsing is per-file and best-effort: a file with syntax errors still yields
 symbols, flagged via `hasParseErrors` (from tree-sitter's `rootNode.hasError`).
@@ -126,13 +127,23 @@ Language-specific notes:
   type's method chain. Exported status follows Go's capitalization rule.
   Imports record named (`alias "path"`), blank (`_ "path"`), and dot forms,
   with the local package name defaulting to the last path segment.
+- **Rust**: functions, structs, enums, and type aliases become nodes;
+  traits are class nodes carrying their method signatures; `impl` blocks
+  attach their methods to the self type in a second pass and an
+  `impl Trait for Type` block records `Trait` as heritage so it resolves
+  through the existing inheritance pass. Visibility is the explicit `pub`
+  modifier. Calls through `self.method()` inside impls resolve along the
+  type's chain; everything dispatched through `dyn Trait`, generics, or a
+  bare value stays ambiguous. Macros (`println!` etc.) are not call sites.
+  `use` statements record plain, grouped (`a::b::{C, D}`), glob, and
+  `pub use` re-export forms with whitespace collapsed.
 
 Known extraction limits (by design, today):
 
 - Only top-level symbols are nodes; functions/classes nested inside other
-  functions are not extracted. (In Go this means methods on types declared
-  in *another file* of the same package have no host node in this file and
-  their call sites are dropped.)
+  functions are not extracted. (In Go and Rust this also means methods on
+  types declared in *another file or module* have no host node in this file
+  and their call sites are dropped.)
 - Intermediate calls are suppressed: in `a.b().c()`, only `c` is recorded,
   since recording `b` as a standalone target would be noise.
 - Call sites at module top level (outside any function/method) have no
@@ -213,6 +224,11 @@ earns a `resolved` edge, and what stays ambiguous.
   declared in `<root>/go.mod` and the target package directory contains Go
   sources; the edge destination is the first `.go` file of that directory in
   sorted order. Everything else is external.
+- Rust: `crate::…` paths and paths prefixed with the crate's own name (from
+  `Cargo.toml`) map onto files under `src/`, walking segments right-to-left
+  until a module file (`<mod>.rs` or `<mod>/mod.rs`) exists — a use path may
+  end in an item name, which is then found by the exported-symbol lookup.
+  Everything else is external.
 - Anything resolving outside the repo root is treated as external.
 - Imports always produce a concrete `dst` (internal file or external module)
   — there are no ambiguous imports today.
