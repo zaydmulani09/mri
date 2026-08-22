@@ -75,7 +75,28 @@ describe("analysis passes", () => {
     expect(byId.get("fn:src/api.js#ghost")).toBe("confirmed-unreferenced");
     expect(byId.get("fn:src/format.js#formatter")).toBe("no-resolved-references");
     expect(byId.get("cls:src/widget.js#Widget")).toBe("confirmed-unreferenced");
-    expect(dead).toHaveLength(3);
+    expect(byId.get("fn:src/callbacks.js#registerLateHandlers")).toBe(
+      "confirmed-unreferenced",
+    );
+    expect(dead).toHaveLength(5);
+  });
+
+  it("never flags pass-by-referenced functions as confirmed-unreferenced", () => {
+    const dead = findDeadCode(store);
+    const target = dead.find(
+      (c) => c.id === "fn:src/callbacks.js#destroyLateRequestResult",
+    );
+
+    expect(target).toBeDefined();
+    expect(target?.confidence).toBe("referenced-but-uncalled");
+
+    const referenceEdges = store.db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM edges
+         WHERE type = 'references' AND dst = 'fn:src/callbacks.js#destroyLateRequestResult'`,
+      )
+      .all() as Array<{ n: number }>;
+    expect(referenceEdges[0]?.n).toBeGreaterThan(0);
   });
 
   it("never flags entry points or exported API as dead", () => {
@@ -139,7 +160,7 @@ describe("analysis passes", () => {
       "src/format.js",
       "src/log.js",
     ]);
-    expect(coverage.coverageRatio).toBeCloseTo(5 / 13, 4);
+    expect(coverage.coverageRatio).toBeCloseTo(5 / 14, 4);
   });
 
   it("collects per-file churn from git history", () => {
