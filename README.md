@@ -108,6 +108,39 @@ nothing was executed (fail closed). allowlist: 4 symbol(s), 3 file(s); 2 unresol
 
 Command reference: run `mri --help`.
 
+### Against a real codebase
+
+The snippets above use a tiny fixture for readability. A full validation run
+against [sindresorhus/got](https://github.com/sindresorhus/got) — including a
+QA pass that found and fixed three real correctness bugs — is captured
+verbatim in [examples/reports/got-analysis.md](examples/reports/got-analysis.md)
+(mri `40ba1d8`). Two highlights from it:
+
+```text
+$ mri build <got>
+85 files parsed
+nodes: 85 files, 311 functions, 24 classes, 189 methods, 57 external modules
+edges: 495 defines, 525 imports, 2334 calls (712 resolved / 1622 ambiguous),
+       16 inherits (14 resolved / 2 ambiguous)
+```
+
+```text
+$ mri blast-radius "fn:source/core/options.ts#assertAny" --format tree
+fn:source/core/options.ts#assertAny  (function)
+├─ ✓ cls:source/core/options.ts#Options   d1 · calls
+│  ├─ ✓ cls:source/core/index.ts#Request   d2 · calls
+│  │  ├─ ✓ fn:source/as-promise/index.ts#asPromise   d3 · calls
+│  ├─ ✓ fn:benchmark/index.ts#internalBenchmark   d2 · calls
+│  ├─ ✓ fn:source/create.ts#create   d2 · calls
+│  ├─ ✓ m:source/core/index.ts#Request._onResponseBase   d2 · calls
+├─ ✓ fn:source/core/options.ts#validateSearchParameters   d1 · calls
+… (21 more Options.* accessor methods, all ✓ confirmed, d1)
+```
+
+Note the build line: 1622 call edges stayed `ambiguous` rather than being
+guessed into destinations — mostly JS globals and dynamic dispatch. That
+ratio is the fail-closed contract doing its job on real code.
+
 ## What's inside
 
 - **Extraction** — gitignore-aware walker plus tree-sitter parsers for
@@ -134,11 +167,12 @@ Built and working today:
   narration via a local Ollama model when available (`mri ask`)
 - Guardrail enforcement: fail-closed allowlists per graph scope plus a
   sandboxed checker (`mri guard`)
+- Showcase validation run against sindresorhus/got, demo-ready
+  ([examples/reports/got-analysis.md](examples/reports/got-analysis.md))
 
 In flight / planned:
 
-- Public showcase run against a real open-source repo
-  (`docs/DEMO_CANDIDATES.md` shortlist; final pick pending test runs)
+- Public containment demo per `docs/CONTAINMENT_DEMO_SCRIPT.md`
 - Incremental rebuilds and watch mode
 
 Full phase breakdown by dependency order: [docs/ROADMAP.md](docs/ROADMAP.md)
