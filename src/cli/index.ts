@@ -17,6 +17,7 @@ import {
   parseQuestion,
   renderAnswer,
 } from "../reasoning/index.js";
+import { runGuardCommand } from "./guard-command.js";
 
 const USAGE = `mri - code intelligence engine
 
@@ -26,6 +27,8 @@ Usage:
   mri blast-radius <node-id> [--format tree] [--db <file>]
   mri analyze <path> [--top <n>] [--window <days>] [--db <file>] [--json]
   mri ask "<question>" <path> [--window <days>]
+  mri guard <scope-node-id> <code-file | -> [--path <repo>] [--resources <config.json>]
+            [--json] [--timeout-ms <n>]
 
 Commands:
   extract       Walk the repository and write per-file symbol data as JSON.
@@ -39,6 +42,9 @@ Commands:
   ask           Ask a natural-language question about the repo. The question
                 is mapped onto one of the supported graph queries, executed
                 against the real graph, and narrated from that result only.
+  guard         Check a snippet of code against the allowlist generated for a
+                scope node. Blocked code prints every containment breach and
+                exits non-zero; clean runs print the return value.
 
 Options:
   -o, --out <file>    extract: write JSON dump to <file> instead of stdout
@@ -46,9 +52,13 @@ Options:
                       (default: <path>/.mri/graph.sqlite; blast-radius:
                       ./.mri/graph.sqlite)
       --format tree   blast-radius: indented tree with confidence markers
-      --json          analyze: machine-readable output
+      --json          analyze/guard: machine-readable output
       --top <n>       analyze: how many top-risk files to show (default 10)
       --window <d>    analyze/ask: git churn window in days (default 90)
+  -p, --path <dir>    guard: repository to build the scope's graph from
+                      (default: current directory)
+      --resources <f> guard: JSON resource-grant config keyed by scope id
+      --timeout-ms <n> guard: sandbox execution timeout (default 1000)
   -h, --help          Show this help
 `;
 
@@ -569,6 +579,54 @@ async function runAsk(args: AskArgs): Promise<number> {
   return 0;
 }
 
+interface GuardCliArgs {
+  scopeId: string | null;
+  source: string | null;
+  path: string | null;
+  resources: string | null;
+  json: boolean;
+  timeoutMs: number | null;
+}
+
+function parseGuardArgs(argv: string[]): GuardCliArgs | null {
+  const args: GuardCliArgs = {
+    scopeId: null,
+    source: null,
+    path: null,
+    resources: null,
+    json: false,
+    timeoutMs: null,
+  };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === undefined) break;
+    switch (arg) {
+      case "--path":
+      case "-p":
+        args.path = argv[++i] ?? null;
+        break;
+      case "--resources":
+        args.resources = argv[++i] ?? null;
+        break;
+      case "--json":
+        args.json = true;
+        break;
+      case "--timeout-ms": {
+        const n = Number(argv[++i]);
+        if (!Number.isFinite(n) || n < 1) return null;
+        args.timeoutMs = n;
+        break;
+      }
+      default:
+        if (arg.startsWith("-")) return null;
+        if (args.scopeId === null) args.scopeId = arg;
+        else if (args.source === null) args.source = arg;
+        else return null;
+    }
+  }
+  return args;
+}
+
 async function main(): Promise<number> {
   const argv = process.argv.slice(2);
   const command = argv[0];
@@ -581,13 +639,35 @@ async function main(): Promise<number> {
     command !== "build" &&
     command !== "blast-radius" &&
     command !== "analyze" &&
-    command !== "ask"
+    command !== "ask" &&
+    command !== "guard"
   ) {
     process.stderr.write(`Unknown command: ${command ?? "<none>"}\n\n${USAGE}`);
     return 1;
   }
 
   const rest = argv.slice(1);
+
+  if (command === "guard") {
+    const args = parseGuardArgs(rest);
+    if (!args || !args.scopeId || !args.source) {
+      process.stderr.write(
+        `mri guard requires a scope node id and a code file ('-' for stdin)\n\n${USAGE}`,
+      );
+      return 1;
+    }
+    const result = await runGuardCommand({
+      scopeId: args.scopeId,
+      source: args.source,
+      repoPath: args.path ?? process.cwd(),
+      resourcesPath: args.resources,
+      json: args.json,
+      timeoutMs: args.timeoutMs,
+    });
+    if (result.stdout) process.stdout.write(result.stdout + "\n");
+    if (result.stderr) process.stderr.write(result.stderr);
+    return result.exitCode;
+  }
 
   if (command === "ask") {
     const args = parseAskArgs(rest);
