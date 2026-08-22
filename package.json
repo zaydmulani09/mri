@@ -1,0 +1,20 @@
+{
+  "name": "mri",
+  "version": "0.1.0",
+  "description": "Code intelligence engine: extracts symbols and structure from source files.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "dist/extraction/index.js",
+  "types": "dist/extraction/index.d.ts",
+  "bin": {
+    "mri": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}
