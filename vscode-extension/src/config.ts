@@ -5,6 +5,7 @@ export interface MriConfig {
   churnWindowDays: number;
   codeLensEnabled: boolean;
   autoRefreshOnSave: boolean;
+  saveDebounceMs: number;
   guardResourcesPath: string;
 }
 
@@ -15,6 +16,7 @@ export function getConfig(): MriConfig {
     churnWindowDays: section.get<number>("churnWindowDays", 90),
     codeLensEnabled: section.get<boolean>("codeLensEnabled", true),
     autoRefreshOnSave: section.get<boolean>("autoRefreshOnSave", true),
+    saveDebounceMs: Math.max(100, section.get<number>("saveDebounceMs", 700)),
     guardResourcesPath: section.get<string>("guardResourcesPath", "").trim(),
   };
 }

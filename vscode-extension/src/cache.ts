@@ -92,7 +92,8 @@ export class WorkspaceAnalysisStore implements Disposable {
 
   /** Coalesce rapid saves into one debounced refresh per affected root. */
   scheduleSaveRefresh(document: TextDocument): void {
-    if (!getConfig().autoRefreshOnSave) return;
+    const config = getConfig();
+    if (!config.autoRefreshOnSave) return;
     const root = workspace.getWorkspaceFolder(document.uri)?.uri.fsPath;
     if (!root || !isSupportedSourceDocument(document.uri)) return;
 
@@ -104,7 +105,7 @@ export class WorkspaceAnalysisStore implements Disposable {
       void (async () => {
         for (const r of roots) await this.refreshFolder(r);
       })();
-    }, 700);
+    }, config.saveDebounceMs);
   }
 
   lastErrorMessage(): string | null {
