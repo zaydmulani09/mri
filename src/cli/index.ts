@@ -26,6 +26,7 @@ import {
 } from "../reasoning/index.js";
 import { runGuardCommand } from "./guard-command.js";
 import { checkRuntime } from "./env-check.js";
+import { createMcpServer, mcpContextFromReasoning } from "../mcp/index.js";
 import {
   createGraphServer,
   openBrowser,
@@ -43,6 +44,7 @@ Usage:
   mri guard <scope-node-id> <code-file | -> [--path <repo>] [--resources <config.json>]
             [--json] [--timeout-ms <n>]
   mri serve <path> [--port <n>] [--no-open]
+  mri mcp <path>
 
 Commands:
   extract       Walk the repository and write per-file symbol data as JSON.
@@ -67,6 +69,9 @@ Commands:
                 exits non-zero; clean runs print the return value.
   serve         Build the graph, serve the dashboard from dashboard/dist, and
                 open it in a browser. Binds 127.0.0.1 only.
+  mcp           Start an MCP (Model Context Protocol) server over stdio that
+                exposes graph and analysis queries as tools for AI coding
+                agents. See docs/MCP_SERVER.md.
 
 Options:
   -o, --out <file>    extract: write JSON dump to <file> instead of stdout
@@ -515,6 +520,9 @@ function renderAnalysisReport(report: AnalysisReport): string {
   lines.push(
     `  dead code candidates ${report.deadCode.length}   (detail under DEAD CODE)`,
   );
+  lines.push(
+    `  circular dependency groups ${report.cycles.importCycles.length}   (detail under CIRCULAR DEPENDENCIES)`,
+  );
   lines.push("");
   lines.push(
     `  risk scores (top ${report.topRisks.length} of ${report.risks.length} files, window ${report.windowDays}d)`,
@@ -577,6 +585,33 @@ function renderAnalysisReport(report: AnalysisReport): string {
     );
   }
   if (report.deadCode.length === 0) lines.push("    none found (within the conservative rules above)");
+  lines.push("");
+
+  lines.push("CIRCULAR DEPENDENCIES (resolved edges only)");
+  const filesInCycles = new Set<string>();
+  for (const cycle of report.cycles.importCycles) {
+    for (const node of cycle.path) filesInCycles.add(node);
+  }
+  lines.push(
+    `  import cycles ${report.cycles.importCycles.length}   (files involved ${filesInCycles.size})`,
+  );
+  for (const cycle of report.cycles.importCycles.slice(0, 5)) {
+    lines.push(`    ${cycle.path.join(" -> ")} -> ${cycle.path[0]}   [${cycle.length} files]`);
+  }
+  if (report.cycles.importCycles.length > 5) {
+    lines.push(
+      `    +${report.cycles.importCycles.length - 5} more strongly-connected groups`,
+    );
+  }
+  lines.push(`  call cycles ${report.cycles.callCycles.length}`);
+  for (const cycle of report.cycles.callCycles.slice(0, 5)) {
+    lines.push(`    ${cycle.path.join(" -> ")} -> ${cycle.path[0]}   [${cycle.length} calls]`);
+  }
+  if (report.cycles.callCycles.length > 5) {
+    lines.push(
+      `    +${report.cycles.callCycles.length - 5} more strongly-connected groups`,
+    );
+  }
   lines.push("");
 
   lines.push("TEST COVERAGE");
@@ -890,7 +925,8 @@ async function main(): Promise<number> {
     command !== "analyze" &&
     command !== "ask" &&
     command !== "guard" &&
-    command !== "serve"
+    command !== "serve" &&
+    command !== "mcp"
   ) {
     process.stderr.write(`Unknown command: ${command ?? "<none>"}\n\n${USAGE}`);
     return 1;

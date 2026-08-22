@@ -4,6 +4,11 @@ export type {
   DeadCodeConfidence,
   DeadCodeOptions,
 } from "./dead-code.js";
+export { findDependencyCycles } from "./cycles.js";
+export type {
+  DependencyCycle,
+  CycleReport,
+} from "./cycles.js";
 export { computeBlastRadius } from "./blast-radius.js";
 export type {
   BlastRadiusNode,

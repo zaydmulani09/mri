@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { buildRepoGraph, openGraph, type BuildSummary } from "../graph/index.js";
 import { findDeadCode, type DeadCodeCandidate } from "./dead-code.js";
+import { findDependencyCycles, type CycleReport } from "./cycles.js";
 import { collectGitHistory } from "./git-history.js";
 import { mapTestCoverage, type TestCoverageResult } from "./test-coverage.js";
 import { scoreFileRisks, type FileRisk } from "./risk.js";
@@ -34,6 +35,7 @@ export interface AnalysisReport {
   architecture: ArchitectureStats;
   security: SecuritySignals;
   deadCode: DeadCodeCandidate[];
+  cycles: CycleReport;
   coverage: TestCoverageResult;
   risks: FileRisk[];
   topRisks: FileRisk[];
@@ -56,6 +58,7 @@ export async function runAnalysis(
   const store = openGraph(dbPath);
   try {
     const deadCode = findDeadCode(store);
+    const cycles = findDependencyCycles(store);
     const coverage = mapTestCoverage(store);
     const history = collectGitHistory(root, windowDays);
     const risks = scoreFileRisks(history, coverage, windowDays);
@@ -81,6 +84,7 @@ export async function runAnalysis(
       architecture,
       security,
       deadCode,
+      cycles,
       coverage,
       risks,
       topRisks: risks.slice(0, topN),
