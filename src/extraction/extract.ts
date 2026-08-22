@@ -5,6 +5,7 @@ import { parserFor } from "./loader.js";
 import { extractJavaScript } from "./javascript.js";
 import { extractPython } from "./python.js";
 import { extractGo } from "./go.js";
+import { extractRust } from "./rust.js";
 import { walkSourceFiles } from "./walker.js";
 import type { FileSymbols } from "./types.js";
 
@@ -30,7 +31,9 @@ export async function extractFile(
       ? extractPython(tree.rootNode)
       : language === "go"
         ? extractGo(tree.rootNode)
-        : extractJavaScript(tree.rootNode);
+        : language === "rust"
+          ? extractRust(tree.rootNode)
+          : extractJavaScript(tree.rootNode);
 
   return {
     path: displayPath(absolutePath, options.root),
