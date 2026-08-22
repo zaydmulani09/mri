@@ -1,5 +1,6 @@
 import { DatabaseSync, type DatabaseSync as Db, type StatementSync } from "node:sqlite";
 import { SCHEMA_SQL } from "./schema.js";
+import type { FileSymbols } from "../extraction/types.js";
 
 export interface NodeRow {
   id: string;
@@ -55,6 +56,7 @@ export class GraphStore {
 
   private insertNode: StatementSync;
   private insertEdge: StatementSync;
+  private upsertFileStateStmt: StatementSync;
 
   constructor(db: Db) {
     this.db = db;
@@ -71,6 +73,12 @@ export class GraphStore {
     this.insertEdge = db.prepare(
       `INSERT INTO edges (src, dst, type, line, callee_text, confidence)
        VALUES (?, ?, ?, ?, ?, ?)`,
+    );
+    this.upsertFileStateStmt = db.prepare(
+      `INSERT INTO file_state (posix_path, content_hash, symbols_json)
+       VALUES (?, ?, ?)
+       ON CONFLICT(posix_path) DO UPDATE SET
+         content_hash=excluded.content_hash, symbols_json=excluded.symbols_json`,
     );
   }
 
@@ -112,6 +120,41 @@ export class GraphStore {
 
   clear(): void {
     this.db.exec("DELETE FROM edges; DELETE FROM nodes; DELETE FROM meta;");
+  }
+
+  /** Clears derived graph data while preserving the per-file extraction cache. */
+  clearGraphData(): void {
+    this.db.exec("DELETE FROM edges; DELETE FROM nodes; DELETE FROM meta;");
+  }
+
+  getMeta(key: string): string | undefined {
+    const row = this.db.prepare("SELECT value FROM meta WHERE key = ?").get(key) as
+      | { value: string }
+      | undefined;
+    return row?.value;
+  }
+
+  getFileHashes(): Map<string, string> {
+    const rows = this.db.prepare("SELECT posix_path, content_hash FROM file_state").all() as Array<{
+      posix_path: string;
+      content_hash: string;
+    }>;
+    return new Map(rows.map((r) => [r.posix_path, r.content_hash]));
+  }
+
+  getCachedSymbolsJson(posixPath: string): string | undefined {
+    const row = this.db
+      .prepare("SELECT symbols_json FROM file_state WHERE posix_path = ?")
+      .get(posixPath) as { symbols_json: string } | undefined;
+    return row?.symbols_json;
+  }
+
+  putFileState(posixPath: string, contentHash: string, symbols: FileSymbols): void {
+    this.upsertFileStateStmt.run(posixPath, contentHash, JSON.stringify(symbols));
+  }
+
+  deleteFileState(posixPath: string): void {
+    this.db.prepare("DELETE FROM file_state WHERE posix_path = ?").run(posixPath);
   }
 
   setMeta(key: string, value: string): void {

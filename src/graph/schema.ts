@@ -62,4 +62,10 @@ CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS file_state (
+  posix_path TEXT PRIMARY KEY,
+  content_hash TEXT NOT NULL,
+  symbols_json TEXT NOT NULL
+);
 `;
