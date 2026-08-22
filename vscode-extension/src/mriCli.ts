@@ -210,6 +210,22 @@ async function readDependentCounts(target: CliTarget, dbPath: string): Promise<M
   }
 }
 
+export async function runAnalysisJson(
+  target: CliTarget,
+  workspaceRoot: string,
+): Promise<AnalysisReport> {
+  const windowDays = getConfig().churnWindowDays;
+  const run = await runCli(
+    target,
+    ["analyze", workspaceRoot, "--json", "--window", String(windowDays)],
+    { cwd: workspaceRoot, timeoutMs: 180_000 },
+  );
+  if (run.exitCode !== 0) {
+    throw new MriCliError(`mri analyze failed (${run.exitCode})`, run.stderr);
+  }
+  return JSON.parse(stripJsonPrefix(run.stdout)) as AnalysisReport;
+}
+
 export async function runBlastRadiusFlat(
   target: CliTarget,
   nodeId: string,

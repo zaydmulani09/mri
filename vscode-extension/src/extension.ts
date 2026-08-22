@@ -3,6 +3,7 @@ import { WorkspaceAnalysisStore } from "./cache";
 import { registerCodeLens } from "./codeLens";
 import { registerShowBlastRadius } from "./blastRadius";
 import { registerGuardCheck } from "./guardDiagnostics";
+import { registerAnalyzeWorkspace } from "./analyzePanel";
 
 export function activate(context: vscode.ExtensionContext): void {
   const store = new WorkspaceAnalysisStore();
@@ -65,6 +66,7 @@ export function activate(context: vscode.ExtensionContext): void {
   registerCodeLens(context, store, lensesChanged);
   registerShowBlastRadius(context, store);
   registerGuardCheck(context);
+  registerAnalyzeWorkspace(context, store);
 
   void store.refreshAll().then(() => lensesChanged.fire());
 }

@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAnalyzeSummary,
   classId,
   findEnclosingSymbol,
   functionId,
   guardBreachesFromJson,
   methodId,
   parseBlastRadiusFlat,
+  renderSummaryText,
   symbolEntriesFromFile,
+  type AnalysisReport,
   type ExtractFileSymbols,
   type GuardJson,
 } from "./parse";
@@ -135,5 +138,95 @@ describe("guard json mapping", () => {
     });
     expect(mapped.executed).toBe(true);
     expect(mapped.breaches).toEqual([]);
+  });
+});
+
+describe("analyze summary model", () => {
+  const report: AnalysisReport = {
+    root: "/repo",
+    generatedAt: "2026-08-22T00:00:00.000Z",
+    windowDays: 90,
+    summary: { fileCount: 12 },
+    risks: [],
+    topRisks: [
+      {
+        path: "src/core/options.ts",
+        score: 42,
+        churnPoints: 42,
+        components: { churnCommits: 6, hasTests: true },
+      },
+      {
+        path: "docs/h2c.js",
+        score: 37,
+        churnPoints: 7,
+        components: { churnCommits: 1, hasTests: false },
+      },
+    ],
+    deadCode: [
+      {
+        id: "fn:src/x.ts#noop",
+        type: "function",
+        name: "noop",
+        path: "src/x.ts",
+        confidence: "referenced-but-uncalled",
+        note: "referenced but never called",
+      },
+      {
+        id: "cls:docs/a.js#Agent",
+        type: "class",
+        name: "Agent",
+        path: "docs/a.js",
+        confidence: "confirmed-unreferenced",
+      },
+    ],
+    coverage: {
+      testFiles: ["test/a.ts"],
+      sourceFiles: ["src/a.ts", "src/b.ts"],
+      coveredFiles: ["src/a.ts"],
+      uncoveredFiles: ["src/b.ts"],
+      coverageRatio: 0.5,
+    },
+  };
+
+  it("reduces the report into panel sections grouped by dead-code confidence", () => {
+    const summary = buildAnalyzeSummary(report);
+    expect(summary.fileCount).toBe(12);
+    expect(summary.riskHotspots[0]).toEqual({
+      path: "src/core/options.ts",
+      score: 42,
+      churnCommits: 6,
+      hasTests: true,
+    });
+    expect(Object.keys(summary.deadCodeByConfidence).sort()).toEqual([
+      "confirmed-unreferenced",
+      "referenced-but-uncalled",
+    ]);
+    expect(summary.deadCodeByConfidence["referenced-but-uncalled"]?.[0]?.note).toBe(
+      "referenced but never called",
+    );
+    expect(summary.coverage.ratioPercent).toBe("50.0");
+    expect(summary.coverage.uncoveredFiles).toEqual(["src/b.ts"]);
+  });
+
+  it("renders a stable plain-text digest for the output channel", () => {
+    const text = renderSummaryText(buildAnalyzeSummary(report));
+    expect(text).toContain("12 files | coverage 50.0% (1/2 source files)");
+    expect(text).toContain("RISK HOTSPOTS (top 2, churn window 90d)");
+    expect(text).toContain("score  42   [churn 6 commits | tested]");
+    expect(text).toContain("[confirmed-unreferenced] cls:docs/a.js#Agent");
+    expect(text).toContain("NOT COVERED");
+  });
+
+  it("handles empty reports without dividing by zero", () => {
+    const empty = buildAnalyzeSummary({
+      ...report,
+      topRisks: [],
+      risks: [],
+      deadCode: [],
+      summary: { fileCount: 0 },
+      coverage: { ...report.coverage!, sourceFiles: [], coveredFiles: [], uncoveredFiles: [], coverageRatio: 0 },
+    });
+    expect(empty.coverage.ratioPercent).toBe("n/a");
+    expect(renderSummaryText(empty)).toContain("coverage n/a%");
   });
 });

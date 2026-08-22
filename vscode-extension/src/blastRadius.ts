@@ -1,7 +1,12 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import type { WorkspaceAnalysisStore } from "./cache";
-import { findEnclosingSymbol, toPosix } from "./parse";
+import {
+  escapeHtmlAttr,
+  escapeHtmlText,
+  findEnclosingSymbol,
+  toPosix,
+} from "./parse";
 import { resolveCliTarget, runBlastRadiusFlat } from "./mriCli";
 
 export function registerShowBlastRadius(
@@ -66,7 +71,7 @@ function resolveSymbolAtCursor(
     return { ok: false, reason: "analysis not ready yet — run 'MRI: Refresh analysis'." };
   }
 
-  const relativePath = toPosixPath(path.relative(root, editor.document.uri.fsPath));
+  const relativePath = toPosix(path.relative(root, editor.document.uri.fsPath));
   const entries = analysis.entriesByFile.get(relativePath) ?? [];
   if (entries.length === 0) {
     return { ok: false, reason: `no MRI symbols found in ${relativePath} — save the file and refresh.` };
@@ -118,17 +123,17 @@ async function showBlastRadiusPanel(
   const rows = flat.dependents
     .map((dependent) => {
       const marker = dependent.confirmed ? "&#10003;" : "?";
-      const location = dependent.path ? `<code>${escapeHtml(dependent.path)}</code>` : "";
+      const location = dependent.path ? `<code>${escapeHtmlText(dependent.path)}</code>` : "";
       const revealButton =
         dependent.path && hasEntryForId(store, root, dependent.id)
-          ? `<button data-path="${attr(dependent.path)}" data-line="${lineOfId(store, root, dependent.id)}" class="reveal">reveal</button>`
+          ? `<button data-path="${escapeHtmlAttr(dependent.path)}" data-line="${lineOfId(store, root, dependent.id)}" class="reveal">reveal</button>`
           : "";
       return (
         `<tr class="${dependent.confirmed ? "confirmed" : "ambiguous"}">` +
         `<td>d${dependent.depth}</td>` +
         `<td>${marker}</td>` +
-        `<td><code>${escapeHtml(dependent.id)}</code></td>` +
-        `<td>${escapeHtml(dependent.relation)}</td>` +
+        `<td><code>${escapeHtmlText(dependent.id)}</code></td>` +
+        `<td>${escapeHtmlText(dependent.relation)}</td>` +
         `<td>${location}</td>` +
         `<td>${revealButton}</td>` +
         "</tr>"
@@ -153,7 +158,7 @@ async function showBlastRadiusPanel(
 </style>
 </head>
 <body>
-<h2>Blast radius of <code>${escapeHtml(nodeId)}</code></h2>
+<h2>Blast radius of <code>${escapeHtmlText(nodeId)}</code></h2>
 <div class="summary">${flat.total} dependent(s): ${flat.confirmed} confirmed, ${flat.ambiguousOnly} ambiguous-only.
 "?" rows are name-only references the graph refused to confirm.</div>
 <table>
@@ -213,18 +218,5 @@ function lineOfId(store: WorkspaceAnalysisStore, root: string, id: string): numb
   return 1;
 }
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
-function attr(text: string): string {
-  return escapeHtml(toPosixPath(text));
-}
 
-function toPosixPath(p: string): string {
-  return p.split("\\").join("/");
-}

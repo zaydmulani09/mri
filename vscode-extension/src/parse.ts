@@ -55,6 +55,15 @@ export interface AnalysisReport {
   summary: { fileCount: number };
   risks: FileRisk[];
   topRisks: FileRisk[];
+  deadCode?: DeadCodeCandidateRow[];
+  coverage?: {
+    testFiles: string[];
+    sourceFiles: string[];
+    coveredFiles: string[];
+    uncoveredFiles: string[];
+    exercises?: Array<{ testFile: string; covers: string[] }>;
+    coverageRatio: number;
+  };
 }
 
 export interface SymbolEntry {
@@ -69,6 +78,18 @@ export interface SymbolEntry {
 /** Graph node ids use forward slashes and are relative to the repo root. */
 export function toPosix(p: string): string {
   return p.split("\\").join("/");
+}
+
+export function escapeHtmlText(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function escapeHtmlAttr(text: string): string {
+  return escapeHtmlText(toPosix(text));
 }
 
 export function functionId(path: string, name: string): string {
@@ -258,4 +279,107 @@ export function guardBreachesFromJson(payload: GuardJson): {
     ruleExpected: breach.rule?.expected ?? null,
   }));
   return { breaches, executed: payload.outcome !== "blocked", allowlistSummary };
+}
+
+// ---------------------------------------------------------------------------
+// Analyze-workspace overview model
+// ---------------------------------------------------------------------------
+
+export interface DeadCodeCandidateRow {
+  id: string;
+  name: string;
+  path: string;
+  confidence: string;
+  note?: string;
+  type?: string;
+}
+
+export interface AnalyzeSummary {
+  fileCount: number;
+  generatedAt: string;
+  windowDays: number;
+  riskHotspots: Array<{ path: string; score: number; churnCommits: number; hasTests: boolean }>;
+  deadCodeByConfidence: Record<string, DeadCodeCandidateRow[]>;
+  coverage: {
+    ratioPercent: string;
+    coveredCount: number;
+    sourceCount: number;
+    uncoveredFiles: string[];
+  };
+}
+
+/**
+ * Reduce an AnalysisReport to the sections the overview panel renders.
+ * Pure so the mapping stays unit-testable.
+ */
+export function buildAnalyzeSummary(report: AnalysisReport): AnalyzeSummary {
+  const riskHotspots = (report.topRisks ?? []).map((risk) => ({
+    path: risk.path,
+    score: risk.score,
+    churnCommits: risk.components?.churnCommits ?? 0,
+    hasTests: Boolean(risk.components?.hasTests),
+  }));
+
+  const deadCodeByConfidence: Record<string, DeadCodeCandidateRow[]> = {};
+  for (const candidate of report.deadCode ?? []) {
+    const bucket = (deadCodeByConfidence[candidate.confidence] ??= []);
+    bucket.push({
+      id: candidate.id,
+      name: candidate.name,
+      path: candidate.path,
+      confidence: candidate.confidence,
+      note: candidate.note,
+    });
+  }
+
+  const coverage = report.coverage;
+  return {
+    fileCount: report.summary?.fileCount ?? 0,
+    generatedAt: report.generatedAt ?? "",
+    windowDays: report.windowDays ?? 90,
+    riskHotspots,
+    deadCodeByConfidence,
+    coverage: {
+      ratioPercent:
+        coverage && coverage.sourceFiles.length > 0
+          ? (coverage.coverageRatio * 100).toFixed(1)
+          : "n/a",
+      coveredCount: coverage?.coveredFiles.length ?? 0,
+      sourceCount: coverage?.sourceFiles.length ?? 0,
+      uncoveredFiles: coverage?.uncoveredFiles ?? [],
+    },
+  };
+}
+
+/** Plain-text digest of the summary, rendered into the MRI output channel. */
+export function renderSummaryText(summary: AnalyzeSummary): string {
+  const lines: string[] = [];
+  lines.push(
+    `${summary.fileCount} files | coverage ${summary.coverage.ratioPercent}% (${summary.coverage.coveredCount}/${summary.coverage.sourceCount} source files)`,
+  );
+  lines.push("");
+  lines.push(`RISK HOTSPOTS (top ${summary.riskHotspots.length}, churn window ${summary.windowDays}d)`);
+  summary.riskHotspots.forEach((risk, i) => {
+    lines.push(
+      `  ${String(i + 1).padStart(2)}. ${risk.path.padEnd(44)} score ${String(risk.score).padStart(3)}   [churn ${risk.churnCommits} commits | ${risk.hasTests ? "tested" : "no tests found"}]`,
+    );
+  });
+  lines.push("");
+  lines.push("DEAD CODE");
+  const confidences = Object.keys(summary.deadCodeByConfidence).sort();
+  if (confidences.length === 0) {
+    lines.push("  none found");
+  } else {
+    for (const confidence of confidences) {
+      for (const candidate of summary.deadCodeByConfidence[confidence] ?? []) {
+        lines.push(`  [${confidence}] ${candidate.id}`);
+      }
+    }
+  }
+  lines.push("");
+  lines.push("NOT COVERED");
+  for (const file of summary.coverage.uncoveredFiles.slice(0, 10)) {
+    lines.push(`  ${file}`);
+  }
+  return lines.join("\n");
 }
