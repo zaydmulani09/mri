@@ -9,14 +9,22 @@ import {
   type AnalysisReport,
   type BlastRadiusNode as BlastRadiusDependent,
 } from "../analysis/index.js";
+import {
+  buildReasoningContext,
+  createDefaultLlmClient,
+  executeQuery,
+  narrateAnswer,
+  parseQuestionSmart,
+} from "../reasoning/index.js";
 
 const USAGE = `mri - code intelligence engine
 
 Usage:
   mri extract <path> [--out <file>]
   mri build <path> [--db <file>]
-  mri blast-radius <node-id> [--db <file>]
-  mri analyze <path> [--top <n>] [--window <days>] [--db <file>]
+  mri blast-radius <node-id> [--format tree] [--db <file>]
+  mri analyze <path> [--top <n>] [--window <days>] [--db <file>] [--json]
+  mri ask "<question>" <path> [--window <days>]
 
 Commands:
   extract       Walk the repository and write per-file symbol data as JSON.
@@ -27,14 +35,19 @@ Commands:
                 vs ambiguous-only reachability kept separate.
   analyze       Build the graph and run analysis passes: dead code candidates,
                 test coverage estimate, per-file risk scores.
+  ask           Ask a natural-language question about the repo. The question
+                is mapped onto one of the supported graph queries, executed
+                against the real graph, and narrated from that result only.
 
 Options:
   -o, --out <file>    extract: write JSON dump to <file> instead of stdout
   -d, --db <file>     SQLite database path for build/blast-radius/analyze
                       (default: <path>/.mri/graph.sqlite; blast-radius:
                       ./.mri/graph.sqlite)
-      --top <n>       analyze: how many top-risk files to show (default 5)
-      --window <d>    analyze: git churn window in days (default 90)
+      --format tree   blast-radius: indented tree with confidence markers
+      --json          analyze: machine-readable output
+      --top <n>       analyze: how many top-risk files to show (default 10)
+      --window <d>    analyze/ask: git churn window in days (default 90)
   -h, --help          Show this help
 `;
 
@@ -480,6 +493,68 @@ async function runAnalyze(args: AnalyzeArgs): Promise<number> {
   return 0;
 }
 
+interface AskArgs {
+  question: string | null;
+  target: string | null;
+  window: number | null;
+}
+
+function parseAskArgs(argv: string[]): AskArgs | null {
+  const args: AskArgs = { question: null, target: null, window: null };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === undefined) break;
+    switch (arg) {
+      case "--window": {
+        const n = Number(argv[++i]);
+        if (!Number.isFinite(n) || n < 1) return null;
+        args.window = n;
+        break;
+      }
+      default:
+        if (arg.startsWith("-")) return null;
+        if (args.question === null) args.question = arg;
+        else if (args.target === null) args.target = arg;
+        else return null;
+    }
+  }
+  return args.question !== null && args.target !== null ? args : args;
+}
+
+async function runAsk(args: AskArgs): Promise<number> {
+  if (!args.target || !args.question) {
+    process.stderr.write(`mri ask requires a quoted question and a target path\n\n${USAGE}`);
+    return 1;
+  }
+
+  const windowDays = args.window ?? 90;
+  const dbPath = path.join(path.resolve(args.target), ".mri", "graph.sqlite");
+
+  let answer;
+  try {
+    await runAnalysis(args.target, { dbPath, windowDays });
+    const store = openGraph(dbPath);
+    try {
+      const context = buildReasoningContext(store, args.target, windowDays);
+      const parsed = await parseQuestionSmart(args.question, createDefaultLlmClient());
+      if (!parsed.ok) {
+        process.stderr.write(`${parsed.reason}\n`);
+        return 1;
+      }
+      answer = executeQuery(context, parsed.query);
+    } finally {
+      store.db.close();
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`error: ${message}\n`);
+    return 1;
+  }
+
+  process.stdout.write((await narrateAnswer(answer, createDefaultLlmClient())) + "\n");
+  return 0;
+}
+
 async function main(): Promise<number> {
   const argv = process.argv.slice(2);
   const command = argv[0];
@@ -491,13 +566,23 @@ async function main(): Promise<number> {
     command !== "extract" &&
     command !== "build" &&
     command !== "blast-radius" &&
-    command !== "analyze"
+    command !== "analyze" &&
+    command !== "ask"
   ) {
     process.stderr.write(`Unknown command: ${command ?? "<none>"}\n\n${USAGE}`);
     return 1;
   }
 
   const rest = argv.slice(1);
+
+  if (command === "ask") {
+    const args = parseAskArgs(rest);
+    if (!args || !args.question || !args.target) {
+      process.stderr.write(`Invalid arguments\n\n${USAGE}`);
+      return 1;
+    }
+    return runAsk(args);
+  }
 
   if (command === "analyze") {
     const args = parseAnalyzeArgs(rest);
