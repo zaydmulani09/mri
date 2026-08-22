@@ -286,13 +286,30 @@ including resolved-vs-ambiguous breakdowns.
 `mri analyze <path>` — builds the graph and runs all passes; prints the
 report.
 
+## Layers above the graph
+
+Two more layers have landed on top of the analysis core since the graph was
+built:
+
+- **Reasoning (`src/reasoning`)** — structured query intents parsed
+  deterministically, executed against the stored graph, and narrated from
+  the structured result. An `LlmClient` seam exists for mapping natural
+  questions onto the fixed intent set, but ships stubbed (`NoLocalModel`);
+  no model is required for any output today.
+- **Guardrail (`src/guardrail`)** — allowlists derived *from the code
+  graph* (`generate.ts`: resolved edges grant, ambiguous edges are excluded
+  and surfaced on an explicit `unresolved` list), plus validated resource
+  grants (`resources.ts`). The scan/interceptor enforcement half is present
+  in the working tree and still landing. Security claims are scoped in
+  `docs/THREAT_MODEL.md`.
+
 ## Not yet built
 
 Tracked here so the boundary between "exists" and "planned" stays honest:
 
-- Guardrail/sandbox interception layer — planned; see
-  `docs/CONTAINMENT_DEMO_SCRIPT.md` for the spec it will be built against.
-- Reasoning/LLM layers on top of the graph — planned; nothing in `src/`
-  yet.
+- Containment CLI entry point and public demo — spec'd in
+  `docs/CONTAINMENT_DEMO_SCRIPT.md`, gated on the enforcement half above.
 - Incremental rebuilds, watch mode, language servers, cross-repo indexing —
   not started.
+
+Phase ordering and dependencies live in `docs/ROADMAP.md`.

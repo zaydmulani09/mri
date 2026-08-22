@@ -81,15 +81,20 @@ Built and working today:
 - Graph construction with resolved-vs-ambiguous tracking (`mri build`)
 - Dead-code, coverage, churn-risk, and blast-radius passes (`mri analyze`,
   `mri blast-radius`)
+- Reasoning v0: deterministic question intents over the graph, grounded
+  narration, `mri ask` (LLM seam stubbed — no model needed)
 
-Planned (not started — see docs for specs):
+In flight / planned:
 
-- Guardrail/sandbox interceptor for agent workflows, culminating in a public
-  containment demo (`docs/CONTAINMENT_DEMO_SCRIPT.md`)
-- Reasoning layers on top of the graph
-- Incremental rebuilds and watch mode
+- Guardrail enforcement: allowlist generation is committed; the
+  scan/interceptor half is landing. Culminates in a public containment demo
+  (`docs/CONTAINMENT_DEMO_SCRIPT.md`, threat claims scoped in
+  `docs/THREAT_MODEL.md`)
 - Public showcase run against a real open-source repo
   (`docs/DEMO_CANDIDATES.md` shortlist; final pick pending test runs)
+- Incremental rebuilds and watch mode
+
+Full phase breakdown by dependency order: [docs/ROADMAP.md](docs/ROADMAP.md)
 
 ## Status
 
