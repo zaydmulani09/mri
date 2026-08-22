@@ -1,0 +1,85 @@
+{
+  "name": "mri-vscode",
+  "displayName": "MRI Code Intelligence",
+  "description": "Surfaces MRI analysis inline: risk scores, blast radius, and fail-closed guard checks while you edit.",
+  "version": "0.1.0",
+  "publisher": "zaydmulani",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zaydmulani09/mri"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Linters"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "mri.refreshAnalysis",
+        "title": "MRI: Refresh analysis for this workspace",
+        "category": "MRI"
+      },
+      {
+        "command": "mri.showBlastRadius",
+        "title": "MRI: Show blast radius for this function",
+        "category": "MRI"
+      },
+      {
+        "command": "mri.runGuardCheck",
+        "title": "MRI: Run guard check",
+        "category": "MRI"
+      }
+    ],
+    "configuration": {
+      "title": "MRI",
+      "properties": {
+        "mri.entryPoint": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Absolute path to MRI's CLI entry point (`dist/cli/index.js`). Leave empty to auto-detect: the workspace itself, a sibling `../mri` checkout, then `mri` on PATH."
+        },
+        "mri.churnWindowDays": {
+          "type": "number",
+          "default": 90,
+          "minimum": 1,
+          "description": "Git churn window (days) used for risk scoring."
+        },
+        "mri.codeLensEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show risk score and blast-radius CodeLenses above functions/classes."
+        },
+        "mri.autoRefreshOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Re-run MRI analysis when a file is saved (debounced), instead of on every keystroke."
+        },
+        "mri.guardResourcesPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional absolute path to a guard resource-grant JSON config passed as --resources."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "typecheck": "tsc -p ./ --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.11"
+  }
+}
