@@ -516,10 +516,11 @@ interface AskArgs {
   question: string | null;
   target: string | null;
   window: number | null;
+  db: string | null;
 }
 
 function parseAskArgs(argv: string[]): AskArgs | null {
-  const args: AskArgs = { question: null, target: null, window: null };
+  const args: AskArgs = { question: null, target: null, window: null, db: null };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === undefined) break;
@@ -530,6 +531,10 @@ function parseAskArgs(argv: string[]): AskArgs | null {
         args.window = n;
         break;
       }
+      case "--db":
+      case "-d":
+        args.db = argv[++i] ?? null;
+        break;
       default:
         if (arg.startsWith("-")) return null;
         if (args.question === null) args.question = arg;
@@ -547,7 +552,8 @@ async function runAsk(args: AskArgs): Promise<number> {
   }
 
   const windowDays = args.window ?? 90;
-  const dbPath = path.join(path.resolve(args.target), ".mri", "graph.sqlite");
+  const dbPath =
+    args.db ?? path.join(path.resolve(args.target), ".mri", "graph.sqlite");
 
   let answer;
   try {
