@@ -118,6 +118,11 @@ function summarizeBuild(result: BuildSummary): string {
       e["inherits"] ?? 0
     } inherits (${result.inheritsResolved} resolved / ${result.inheritsAmbiguous} ambiguous)`,
   ];
+  if (result.parseErrorFiles > 0) {
+    lines.push(
+      `${result.parseErrorFiles} file(s) had parse errors — the graph is missing structure for them`,
+    );
+  }
   return lines.join("\n");
 }
 
