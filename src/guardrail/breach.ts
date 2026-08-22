@@ -4,7 +4,8 @@ export type BreachKind =
   | "unverifiable-import"
   | "ungranted-resource"
   | "unverifiable-resource"
-  | "unknown-reference";
+  | "unknown-reference"
+  | "denied-unclassifiable";
 
 export type AllowlistArea =
   | "symbols"

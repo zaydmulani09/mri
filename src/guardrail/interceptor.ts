@@ -154,26 +154,67 @@ export function checkAndRun(
     if (error instanceof ContainmentViolation) {
       return { outcome: "blocked", breaches: [error.breach] };
     }
-    throw error;
+    // Defense in depth: checkAndRun must NEVER let an exception escape.
+    // A crash is not a containment decision; anything the sandbox cannot
+    // finish is recorded as blocked with the failure as evidence.
+    return {
+      outcome: "blocked",
+      breaches: [
+        {
+          kind: "denied-unclassifiable",
+          line: 0,
+          attempted: "sandbox execution",
+          rule: null,
+          message:
+            `execution could not complete inside the sandbox ` +
+            `(${describeError(error)}); recorded as a containment block (fail closed)`,
+        },
+      ],
+    };
   }
 }
 
+function describeError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message ? `${error.name}: ${error.message}` : error.name;
+  }
+  return String(error);
+}
+
 function prepareForExecution(code: string, imports: ScannedImport[]): string {
-  const staticImports = imports.filter(
-    (imp): imp is ScannedImport & { startIndex: number; endIndex: number } =>
-      imp.via === "static-import" &&
-      imp.specifier !== null &&
-      typeof imp.startIndex === "number" &&
-      typeof imp.endIndex === "number",
-  );
-  if (staticImports.length === 0) return code;
+  const rewrites: Array<{ start: number; end: number; text: string }> = [];
+
+  for (const imp of imports) {
+    if (
+      imp.specifier === null ||
+      typeof imp.startIndex !== "number" ||
+      typeof imp.endIndex !== "number"
+    ) {
+      continue;
+    }
+    if (imp.via === "static-import") {
+      rewrites.push({
+        start: imp.startIndex,
+        end: imp.endIndex,
+        text: synthRequireDeclaration(imp),
+      });
+    } else if (imp.via === "dynamic-import") {
+      // Literal dynamic imports run through the same guarded require bridge
+      // instead of the VM's missing dynamic-import callback.
+      const spec = JSON.stringify(imp.specifier);
+      rewrites.push({
+        start: imp.startIndex,
+        end: imp.endIndex,
+        text: `(Promise.resolve().then(() => require(${spec})))`,
+      });
+    }
+  }
+
+  if (rewrites.length === 0) return code;
 
   let rewritten = code;
-  for (const imp of [...staticImports].sort((a, b) => b.startIndex - a.startIndex)) {
-    rewritten =
-      rewritten.slice(0, imp.startIndex) +
-      synthRequireDeclaration(imp) +
-      rewritten.slice(imp.endIndex);
+  for (const rw of rewrites.sort((a, b) => b.start - a.start)) {
+    rewritten = rewritten.slice(0, rw.start) + rw.text + rewritten.slice(rw.end);
   }
   return rewritten;
 }

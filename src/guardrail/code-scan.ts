@@ -219,23 +219,33 @@ function recordCallExpression(
   const callee = node.childForFieldName("function");
   if (!callee) return;
 
-  if (callee.type === "identifier") {
+  // Dynamic import() parses as a call_expression whose function field is a
+  // dedicated `import` keyword node - NOT an identifier - so it must be
+  // matched separately from require()/plain calls or it escapes analysis.
+  const dynamicImportForm = callee.type === "import";
+
+  if (callee.type === "identifier" || dynamicImportForm) {
     const args = node.childForFieldName("arguments");
     const firstArg = args?.namedChildren[0] ?? null;
+    const isRequire = callee.type === "identifier" && callee.text === "require";
+    const isDynamicImport = dynamicImportForm || (callee.type === "identifier" && callee.text === "import");
 
-    if (callee.text === "require" || callee.text === "import") {
+    if (isRequire || isDynamicImport) {
       consumed.add(callee.id);
+      const literal = firstArg !== null && isLiteralString(firstArg);
       imports.push({
-        specifier: firstArg && isLiteralString(firstArg) ? literalString(firstArg) : null,
+        specifier: literal ? literalString(firstArg as Node) : null,
         bindings: [],
-        via: callee.text === "require" ? "require-call" : "dynamic-import",
+        via: isRequire ? "require-call" : "dynamic-import",
         line: startLine(node),
         attempted: node.text.split("\n")[0] ?? node.text,
+        startIndex: node.startIndex,
+        endIndex: node.endIndex,
       });
       return;
     }
 
-    if (callee.text === "fetch") {
+    if (callee.type === "identifier" && callee.text === "fetch") {
       consumed.add(callee.id);
       accesses.push({
         category: "network",
