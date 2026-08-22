@@ -66,7 +66,13 @@ export function GraphView({ graph, selectedId, onSelect, blast }: Props) {
     );
     const simNodes: SimNode[] = graph.nodes
       .filter((n) => visible.has(n.id))
-      .map((n) => ({ ...n, x: 0, y: 0 }));
+      // All-zero initial positions put coincident nodes in a degenerate
+      // force equilibrium that never moves; scatter them instead.
+      .map((n) => ({
+        ...n,
+        x: (Math.random() - 0.5) * 400,
+        y: (Math.random() - 0.5) * 300,
+      }));
     const byId = new Map(simNodes.map((n) => [n.id, n]));
     const simLinks: SimLink[] = graph.edges
       .filter((e) => visible.has(e.src) && visible.has(e.dst))
@@ -259,6 +265,29 @@ export function GraphView({ graph, selectedId, onSelect, blast }: Props) {
     // redraw on every render too (selection/blast changes)
   });
 
+  // React registers wheel handlers passively, so preventDefault must go
+  // through a native non-passive listener to block page scroll.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const onWheel = (e: WheelEvent): void => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const t = transformRef.current;
+      const factor = Math.exp(-e.deltaY * 0.0012);
+      const kNew = Math.min(4, Math.max(0.2, t.k * factor));
+      transformRef.current = {
+        k: kNew,
+        x: mx - ((mx - t.x) * kNew) / t.k,
+        y: my - ((my - t.y) * kNew) / t.k,
+      };
+    };
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", onWheel);
+  }, []);
+
   function pickNode(event: React.PointerEvent): SimNode | null {
     const canvas = canvasRef.current;
     if (!canvas) return null;
@@ -360,22 +389,6 @@ export function GraphView({ graph, selectedId, onSelect, blast }: Props) {
         }}
         onPointerMove={(e) => {
           hoverRef.current = pickNode(e);
-        }}
-        onWheel={(e) => {
-          e.preventDefault();
-          const canvas = canvasRef.current;
-          if (!canvas) return;
-          const rect = canvas.getBoundingClientRect();
-          const mx = e.clientX - rect.left;
-          const my = e.clientY - rect.top;
-          const t = transformRef.current;
-          const factor = Math.exp(-e.deltaY * 0.0012);
-          const kNew = Math.min(4, Math.max(0.2, t.k * factor));
-          transformRef.current = {
-            k: kNew,
-            x: mx - ((mx - t.x) * kNew) / t.k,
-            y: my - ((my - t.y) * kNew) / t.k,
-          };
         }}
       />
     </>
