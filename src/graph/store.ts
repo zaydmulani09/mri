@@ -9,6 +9,7 @@ export interface NodeRow {
   start_line: number | null;
   end_line: number | null;
   external: number;
+  exported: number;
   language: string | null;
 }
 
@@ -30,6 +31,7 @@ export interface NodeInput {
   startLine?: number | null;
   endLine?: number | null;
   external?: boolean;
+  exported?: boolean;
   language?: string | null;
 }
 
@@ -58,12 +60,13 @@ export class GraphStore {
     this.db = db;
     db.exec(SCHEMA_SQL);
     this.insertNode = db.prepare(
-      `INSERT INTO nodes (id, type, name, path, start_line, end_line, external, language)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO nodes (id, type, name, path, start_line, end_line, external, exported, language)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          type=excluded.type, name=excluded.name, path=excluded.path,
          start_line=excluded.start_line, end_line=excluded.end_line,
-         external=excluded.external, language=excluded.language`,
+         external=excluded.external, exported=excluded.exported,
+         language=excluded.language`,
     );
     this.insertEdge = db.prepare(
       `INSERT INTO edges (src, dst, type, line, callee_text, confidence)
@@ -80,6 +83,7 @@ export class GraphStore {
       node.startLine ?? null,
       node.endLine ?? null,
       node.external ? 1 : 0,
+      node.exported ? 1 : 0,
       node.language ?? null,
     );
   }

@@ -92,6 +92,7 @@ function writeSymbolNodes(store: GraphStore, files: FileSymbols[]): void {
         path: posixPath,
         startLine: fn.startLine,
         endLine: fn.endLine,
+        exported: fn.exported,
         language: symbols.language,
       });
       store.addEdge({
@@ -111,6 +112,7 @@ function writeSymbolNodes(store: GraphStore, files: FileSymbols[]): void {
         path: posixPath,
         startLine: cls.startLine,
         endLine: cls.endLine,
+        exported: cls.exported,
         language: symbols.language,
       });
       store.addEdge({

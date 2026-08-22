@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS nodes (
   start_line INTEGER,
   end_line INTEGER,
   external INTEGER NOT NULL DEFAULT 0,
+  exported INTEGER NOT NULL DEFAULT 0,
   language TEXT
 );
 
