@@ -4,9 +4,10 @@ export const DEFAULT_TEST_FILE_PATTERNS: readonly RegExp[] = [
   /(^|\/)test_[^/]+\.py$/i,
   /(^|\/)[^/]+_test\.py$/i,
   /(^|\/)[^/]+_test\.go$/i,
+  /(^|\/)tests\/[^/]+\.rs$/i,
 ];
 
-const DEFAULT_ENTRY_FILE_PREFIXES = ["index.", "main.", "__init__."];
+const DEFAULT_ENTRY_FILE_PREFIXES = ["index.", "main.", "__init__.", "lib."];
 
 export function matchesAny(path: string | null, patterns: readonly RegExp[]): boolean {
   if (!path) return false;
