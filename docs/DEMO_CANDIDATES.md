@@ -42,6 +42,15 @@ A good showcase repo:
   means many genuinely ambiguous calls — which is fine if framed as the
   fail-closed principle working, but reduces "resolved" eye-candy unless
   narrated carefully.
+- **Expected MRI findings (hypotheses — not yet verified):**
+  *dead code* — back-compat helpers and aliases accumulated across the v0→v1
+  eras (legacy `CancelToken` companions alongside AbortController support,
+  older utils superseded by newer helpers) should produce
+  confirmed-unreferenced candidates among internal, non-exported functions;
+  *risk hotspots* — `lib/adapters/http.js` and the core dispatch path are
+  historically the churn centers (adapter bugs are recurring fix targets);
+  *coverage gaps* — browser-only xhr branches relative to a Node-executed
+  suite.
 
 ### 2. pallets/click
 
@@ -55,6 +64,14 @@ A good showcase repo:
   coverage gaps between modules and tests are plausible.
 - **Concerns:** very well-maintained; may simply have little true dead code.
   If findings come back thin, the demo leans on risk/churn instead.
+- **Expected MRI findings (hypotheses — not yet verified):**
+  *dead code* — `_compat.py` shims and deprecated decorator/option paths
+  left across major-version boundaries are the likeliest candidates;
+  *risk hotspots* — `src/click/core.py` (command/context machinery) around
+  release windows; *coverage gaps* — plausibly in exotic `termui`
+  submodules. Expect a thinner findings list than the others; if so, the
+  honest story is "clean repo, here is what clean looks like" plus the
+  ambiguity-ratio narrative.
 
 ### 3. tqdm/tqdm
 
@@ -69,6 +86,14 @@ A good showcase repo:
 - **Concerns:** the giant single-file core means per-symbol granularity
   carries the demo (methods of one class), not file-level structure. License
   field needs care when presenting.
+- **Expected MRI findings (hypotheses — not yet verified):**
+  *coverage gaps* — the strongest expected story: `contrib/` integrations
+  and `gui.py`/`tk.py` are rarely co-imported by unit tests, so import-based
+  coverage should show large, explainable holes; *dead code* — version-compat
+  shims and internal helpers in `std.py`/`_utils` that survived refactors;
+  *risk hotspots* — everything concentrates on `std.py` by construction,
+  which demos per-symbol risk granularity. Dynamic `setattr`-style usage
+  will inflate the ambiguous ratio — narrate as designed behavior.
 
 ### 4. pinojs/pino
 
@@ -83,6 +108,14 @@ A good showcase repo:
 - **Concerns:** much of the magic is runtime string-keyed (`symbols.js`)
   which resolves ambiguously by design; again a narration point, but it
   thins the resolved-edge visual.
+- **Expected MRI findings (hypotheses — not yet verified):**
+  *dead code* — legacy wrappers and shims kept for API stability (old option
+  names, deprecated pretty-logging bridges) are the likely
+  confirmed-unreferenced candidates; *risk hotspots* — `lib/transport*`
+  worker plumbing, which churns whenever threading semantics shift;
+  *coverage gaps* — thread/transport code paths that unit suites exercise
+  only shallowly. Expect a high ambiguous share from symbol-keyed dispatch;
+  that is the fail-closed story working, not a failure.
 
 ### 5. sindresorhus/got
 
@@ -98,6 +131,14 @@ A good showcase repo:
   angle; the demo would rest mostly on blast radius + churn. Slower-moving
   than the others (pushed ~5 weeks before check date) — still active, but
   verify momentum at demo time.
+- **Expected MRI findings (hypotheses — not yet verified):**
+  *resolved-edge density* — the headline expectation: explicit idiomatic TS
+  imports across the `as-*`/`core`/`normalize-options` pipeline should give
+  the highest proven-link share of the five, and a blast-radius walk from
+  something like the retry-timeout calculation should traverse visibly deep;
+  *risk hotspots* — retry and options-normalization modules, which churn on
+  bug fixes; *dead code / coverage gaps* — expect few, given repo hygiene.
+  If confirmed, got wins on structure and loses on findings drama.
 
 ## Considered and rejected
 
