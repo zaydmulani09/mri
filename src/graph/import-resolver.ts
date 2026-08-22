@@ -118,6 +118,9 @@ export function createImportResolver(rootDir: string): ImportResolver {
     if (language === "go") {
       return resolveGoPackage(specifier);
     }
+    if (language === "rust") {
+      return resolveRustPath(specifier);
+    }
     return resolveJs(importerPath, specifier);
   }
 
@@ -171,6 +174,61 @@ export function createImportResolver(rootDir: string): ImportResolver {
     } catch {
       return { specifier, status: "external" };
     }
+  }
+
+  // Rust imports resolve against the crate root: `crate::` paths (and the
+  // crate's own name used as a path prefix) map onto files under src/. A
+  // use path may end in an item name rather than a module, so segments are
+  // dropped from the right until a module file exists - the item itself is
+  // then found by the exported-symbol lookup, not guessed here.
+  let rustPackageCache: string | null | undefined;
+
+  function rustPackageName(): string | null {
+    if (rustPackageCache !== undefined) return rustPackageCache;
+    rustPackageCache = null;
+    try {
+      const manifest = readFileSync(path.join(root, "Cargo.toml"), "utf8");
+      const match = /^\s*name\s*=\s*"([^"]+)"\s*$/m.exec(manifest);
+      if (match?.[1]) rustPackageCache = match[1];
+    } catch {
+      // no Cargo.toml at root: only explicit crate:: paths can be internal
+    }
+    return rustPackageCache;
+  }
+
+  function resolveRustPath(specifier: string): ResolvedImport {
+    let rest: string;
+    if (specifier === "crate" || specifier.startsWith("crate::")) {
+      rest = specifier.slice("crate".length).replace(/^::/, "");
+    } else {
+      const packageName = rustPackageName();
+      if (packageName === null) return { specifier, status: "external" };
+      if (specifier !== packageName && !specifier.startsWith(packageName + "::")) {
+        return { specifier, status: "external" };
+      }
+      rest = specifier.slice(packageName.length).replace(/^::/, "");
+    }
+    const srcDir = path.join(root, "src");
+    const segments = rest.split("::").filter((segment) => segment.length > 0);
+
+    for (let drop = 0; drop <= segments.length; drop++) {
+      const moduleSegments = segments.slice(0, segments.length - drop);
+      const base =
+        moduleSegments.length === 0
+          ? srcDir
+          : path.join(srcDir, ...moduleSegments);
+      const candidates = [`${base}.rs`, path.join(base, "mod.rs")];
+      for (const candidate of candidates) {
+        if (isFile(candidate) && insideRoot(candidate)) {
+          return {
+            specifier,
+            status: "internal",
+            path: toPosixRelative(root, candidate),
+          };
+        }
+      }
+    }
+    return { specifier, status: "external" };
   }
 
   return { resolve };
