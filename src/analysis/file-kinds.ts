@@ -3,6 +3,7 @@ export const DEFAULT_TEST_FILE_PATTERNS: readonly RegExp[] = [
   /\.(test|spec)\.[cm]?[jt]sx?$/i,
   /(^|\/)test_[^/]+\.py$/i,
   /(^|\/)[^/]+_test\.py$/i,
+  /(^|\/)[^/]+_test\.go$/i,
 ];
 
 const DEFAULT_ENTRY_FILE_PREFIXES = ["index.", "main.", "__init__."];
