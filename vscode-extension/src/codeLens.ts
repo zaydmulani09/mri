@@ -29,6 +29,8 @@ const SUPPORTED_SELECTORS: vscode.DocumentSelector = [
   { scheme: "file", language: "javascriptreact" },
   { scheme: "file", language: "typescriptreact" },
   { scheme: "file", language: "python" },
+  { scheme: "file", language: "go" },
+  { scheme: "file", language: "rust" },
 ];
 
 class MriCodeLensProvider implements vscode.CodeLensProvider {

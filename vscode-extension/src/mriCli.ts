@@ -21,7 +21,9 @@ export interface CliTarget {
   source: string;
 }
 
-const SUPPORTED_EXTENSIONS = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".py"]);
+const SUPPORTED_EXTENSIONS = new Set([
+  ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".py", ".go", ".rs",
+]);
 
 export class MriCliError extends Error {
   constructor(
