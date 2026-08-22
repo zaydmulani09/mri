@@ -59,19 +59,22 @@ anything is missing.
 
 ### From npm (after publish)
 
+The npm package is published as **`mri-codeintel`**; the installed command is
+**`mri`**.
+
 ```bash
-npm install -g mri
+npm install -g mri-codeintel
 mri --help
 ```
 
 Or use it without installing globally:
 
 ```bash
-npx mri analyze /path/to/repo
+npx mri-codeintel analyze /path/to/repo
 ```
 
 The npm package bundles its tree-sitter native dependencies, so a plain
-`npm install mri` works out of the box on platforms with prebuilt binaries
+`npm install mri-codeintel` works out of the box on platforms with prebuilt binaries
 (win32/x64, darwin arm64+x64, linux arm64+x64) — no compiler toolchain needed.
 
 ### From source

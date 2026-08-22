@@ -1,5 +1,5 @@
 {
-  "name": "mri",
+  "name": "mri-codeintel",
   "version": "0.1.0",
   "description": "Code intelligence engine: extracts symbols, calls and risk from JavaScript/TypeScript, Python and Go repos into a queryable graph.",
   "type": "module",
