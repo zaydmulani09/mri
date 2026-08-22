@@ -73,7 +73,12 @@ runs:
         set -euo pipefail
         dest="$RUNNER_TEMP/mri-action-source"
         rm -rf "$dest"
-        git clone --depth 1 --branch "$MRI_REF" https://github.com/zaydmulani09/mri "$dest"
+        # Refs and raw SHAs both work; pinned SHAs are how consumers freeze
+        # enforcement behavior.
+        git init -q "$dest"
+        git -C "$dest" remote add origin https://github.com/zaydmulani09/mri
+        git -C "$dest" fetch -q --depth 1 origin "$MRI_REF"
+        git -C "$dest" checkout -q FETCH_HEAD
         echo "MRI_DIR=$dest" >> "$GITHUB_ENV"
 
     - name: Set up Node
