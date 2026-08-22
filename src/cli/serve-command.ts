@@ -45,8 +45,11 @@ export async function prepareServeContext(
   repoPath: string,
 ): Promise<ServeContext> {
   const repoRoot = path.resolve(repoPath);
-  await buildRepoGraph(repoRoot, path.join(repoRoot, ".mri", "graph.sqlite"));
-  const store = openGraph(path.join(repoRoot, ".mri", "graph.sqlite"));
+  const dbPath = path.join(repoRoot, ".mri", "graph.sqlite");
+
+  await fs.mkdir(path.dirname(dbPath), { recursive: true });
+  const summary = await buildRepoGraph(repoRoot, dbPath);
+  const store = openGraph(dbPath);
 
   const graph = buildGraphPayload(store);
   const deadCode = findDeadCode(store);
@@ -62,7 +65,8 @@ export async function prepareServeContext(
     metaJson: {
       root: repoRoot.split(path.sep).join("/"),
       generatedAt: new Date().toISOString(),
-      fileCount: graph.nodes.filter((n) => n.type === "file").length,
+      fileCount: summary.fileCount,
+      parseErrorFiles: summary.parseErrorFiles,
       counts: store.counts(),
       windowDays: 90,
     },
