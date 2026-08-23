@@ -37,6 +37,8 @@ export {
   CHURN_WEIGHT_POINTS,
   COVERAGE_PENALTY_POINTS,
   CHURN_CAP_COMMITS,
+  COMPLEXITY_WEIGHT_POINTS,
+  COMPLEXITY_CAP,
 } from "./risk.js";
 export type { RiskComponents, FileRisk } from "./risk.js";
 export { runAnalysis, type AnalysisReport, type AnalysisOptions } from "./analyze.js";

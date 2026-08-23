@@ -207,8 +207,9 @@ ratio is the fail-closed contract doing its job on real code.
   `defines` / `imports` / `calls` / `inherits` relations, built in one
   atomic transaction per repository.
 - **Analysis** — dead-code candidates with two-level confidence labels,
-  import-based test-coverage estimates, git-churn risk scoring with printed
-  components, reverse-dependency blast radius by depth.
+  import-based test-coverage estimates, cyclomatic-complexity scoring,
+  git-churn risk scoring with printed components, reverse-dependency blast
+  radius by depth.
 
 See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design and the
 resolution/confidence contract.
@@ -219,8 +220,8 @@ Built and working today:
 
 - Extraction layer for JS/TS/Python (`mri extract`)
 - Graph construction with resolved-vs-ambiguous tracking (`mri build`)
-- Dead-code, coverage, churn-risk, and blast-radius passes (`mri analyze`,
-  `mri blast-radius`)
+- Dead-code, coverage, complexity, churn-risk, and blast-radius passes
+  (`mri analyze`, `mri blast-radius`)
 - Reasoning v0: deterministic question intents over the graph, grounded
   narration via a local Ollama model when available (`mri ask`)
 - Guardrail enforcement: fail-closed allowlists per graph scope plus a

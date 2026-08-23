@@ -287,8 +287,9 @@ for consumers to reason honestly:
   exclusively from proven links.
 - Risk scoring (`analysis/risk.ts`) is deliberately simple and explainable:
   churn points (commits in window, capped, scaled to 70) plus a flat 30-point
-  penalty when no covering test file is found. No black-box weights; every
-  score prints its components.
+  penalty when no covering test file is found plus a cyclomatic-complexity
+  component scaled from the most complex function in the file (capped at
+  CC 15 → 30 points). No black-box weights; every score prints its components.
 
 ## Analysis layer
 
@@ -303,7 +304,16 @@ history for churn) and return plain data structures:
   by test files (import-based reachability, not execution-based coverage).
 - **Git churn & risk** — commit counts within a configurable window, last-
   modified dates, untracked-file flag; per-file risk = churn points +
-  missing-test penalty.
+  missing-test penalty + complexity points.
+- **Cyclomatic complexity** (`analysis/complexity.ts`) — per-function
+  decision-point counts computed by re-parsing sources with the same
+  tree-sitter grammars extraction uses. Base path of 1; each if/else-if,
+  loop, switch/match case arm (wildcard/default arms excluded), ternary,
+  catch/except clause, and short-circuit operator (`&&`, `||`, `and`, `or`)
+  adds one. Decisions are attributed to the innermost enclosing function,
+  closure, or method; module-level decisions land in a synthetic `<module>`
+  entry. Not counted: plain `else` branches, comprehension clauses, `??`,
+  Go's `default` case.
 - **Blast radius** — reverse-dependency traversal from any node id by depth,
   confirmed vs ambiguous-only kept separate end to end.
 

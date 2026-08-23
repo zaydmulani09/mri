@@ -60,7 +60,8 @@ Commands:
   blast-radius  Everything that depends on <node-id>, by depth, with confirmed
                 vs ambiguous-only reachability kept separate.
   analyze       Build the graph and run analysis passes: dead code candidates,
-                test coverage estimate, per-file risk scores.
+                test coverage estimate, per-file risk scores, cyclomatic
+                complexity.
   ask           Ask a natural-language question about the repo. The question
                 is mapped onto one of the supported graph queries, executed
                 against the real graph, and narrated from that result only.
@@ -533,6 +534,7 @@ function renderAnalysisReport(report: AnalysisReport): string {
       risk.components.hasTests
         ? "tested (+0pts)"
         : "no tests found (+30pts)",
+      `max CC ${risk.components.maxComplexity} (+${risk.complexityPoints}pts)`,
     ];
     if (risk.components.untracked) parts.unshift("untracked in git");
     else if (risk.components.lastModifiedIso)
@@ -541,6 +543,16 @@ function renderAnalysisReport(report: AnalysisReport): string {
       `    ${String(index + 1).padStart(2)}. ${risk.path.padEnd(28)} score ${String(risk.score).padStart(3)}   [${parts.join(" | ")}]`,
     );
   });
+  if (report.complexity.topFunctions.length > 0) {
+    lines.push(
+      `  highest-complexity functions (top ${report.complexity.topFunctions.length} of ${report.complexity.totalFunctions})`,
+    );
+    for (const fn of report.complexity.topFunctions) {
+      lines.push(
+        `    CC ${String(fn.complexity).padStart(3)}  ${fn.path}:${fn.startLine}  ${fn.name}`,
+      );
+    }
+  }
   lines.push("");
 
   lines.push("SECURITY-RELEVANT SIGNALS (gaps in knowledge, not findings)");

@@ -16,6 +16,8 @@ import {
   mapTestCoverage,
   collectGitHistory,
   scoreFileRisks,
+  COMPLEXITY_CAP,
+  COMPLEXITY_WEIGHT_POINTS,
 } from "../src/analysis/index.js";
 
 const fixtureRoot = path.join(
@@ -193,5 +195,26 @@ describe("analysis passes", () => {
     expect(api?.score).toBe(0);
 
     expect(risks[0]?.path).toBe("src/hot.js");
+  });
+
+  it("adds a bounded complexity component when given per-file maxima", () => {
+    const history = collectGitHistory(tmpRepo, 90);
+    const coverage = mapTestCoverage(store);
+
+    const withComplexity = scoreFileRisks(history, coverage, 90, new Map([["src/hot.js", 8]]));
+    const hot = withComplexity.find((r) => r.path === "src/hot.js");
+    expect(hot?.components.maxComplexity).toBe(8);
+    expect(hot?.complexityPoints).toBe(Math.round((8 / COMPLEXITY_CAP) * COMPLEXITY_WEIGHT_POINTS));
+    expect(hot?.score).toBe(14 + 30 + hot?.complexityPoints);
+
+    const capped = scoreFileRisks(history, coverage, 90, new Map([["src/hot.js", 40]]));
+    const cappedHot = capped.find((r) => r.path === "src/hot.js");
+    expect(cappedHot?.complexityPoints).toBe(COMPLEXITY_WEIGHT_POINTS);
+
+    const withoutComplexity = scoreFileRisks(history, coverage, 90);
+    const plain = withoutComplexity.find((r) => r.path === "src/hot.js");
+    expect(plain?.complexityPoints).toBe(0);
+    expect(plain?.components.maxComplexity).toBe(0);
+    expect(plain?.score).toBe(hot!.score - hot!.complexityPoints);
   });
 });

@@ -5,6 +5,11 @@ import { findDeadCode, type DeadCodeCandidate } from "./dead-code.js";
 import { findDependencyCycles, type CycleReport } from "./cycles.js";
 import { collectGitHistory } from "./git-history.js";
 import { mapTestCoverage, type TestCoverageResult } from "./test-coverage.js";
+import {
+  analyzeComplexity,
+  maxComplexityByPath,
+  type ComplexityReport,
+} from "./complexity.js";
 import { scoreFileRisks, type FileRisk } from "./risk.js";
 
 export interface ArchitectureStats {
@@ -37,6 +42,7 @@ export interface AnalysisReport {
   deadCode: DeadCodeCandidate[];
   cycles: CycleReport;
   coverage: TestCoverageResult;
+  complexity: ComplexityReport;
   risks: FileRisk[];
   topRisks: FileRisk[];
   windowDays: number;
@@ -61,7 +67,13 @@ export async function runAnalysis(
     const cycles = findDependencyCycles(store);
     const coverage = mapTestCoverage(store);
     const history = collectGitHistory(root, windowDays);
-    const risks = scoreFileRisks(history, coverage, windowDays);
+    const complexity = await analyzeComplexity(root);
+    const risks = scoreFileRisks(
+      history,
+      coverage,
+      windowDays,
+      maxComplexityByPath(complexity),
+    );
 
     const architecture = collectArchitectureStats(store);
     const security: SecuritySignals = {
@@ -86,6 +98,7 @@ export async function runAnalysis(
       deadCode,
       cycles,
       coverage,
+      complexity,
       risks,
       topRisks: risks.slice(0, topN),
       windowDays,
