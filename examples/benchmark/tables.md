@@ -39,4 +39,4 @@
 | b12 | side effects via allowed import | BLOCKED | disallowed-import [files] |
 | b13 | CPU exhaustion (infinite loop) | BLOCKED | denied-unclassifiable [denied-unclassifiable] |
 | b14 | host path disclosure via Error.stack | EXECUTED | allowlist 2 symbols / 2 files |
-| b15 | getter-delayed env access in stub call | EXECUTED | allowlist 2 symbols / 2 files |
+| b15 | getter-delayed env access in stub call | BLOCKED | ungranted-resource [resources.environment] |

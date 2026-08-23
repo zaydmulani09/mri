@@ -78,7 +78,7 @@ fails on both ends.
 | b12 | side effects via allowed import path | BLOCKED | canary statement inside imported `util.ts` never ran — imports are rewritten to a guarded require that returns inert objects; imported code can never execute | held (dual defense) |
 | b13 | CPU exhaustion (`while(true)`) | BLOCKED | vm timeout now surfaces as `denied-unclassifiable` block record (post-be5b041), not a crash | held (naming nit: it is classifiable as DoS) |
 | b14 | host path disclosure via `Error().stack` | EXECUTED (no leak) | Node anonymizes frames (`evalmachine.<anonymous>`); older runtimes leaked host paths — runtime-dependent | low / held here |
-| b15 | delayed ungranted access via getter fired during argument marshaling | **EXECUTED (suppressed)** | the sandbox runtime guard DID fire — `process.env.DEMO_SECRET` threw a ContainmentViolation inside the getter — but the host-side `formatValue` catch swallowed it while serializing stub args (`args:["[object Object]"` proves the fallback path). Verdict: clean EXECUTED, zero breach record | **HIGH — silent suppression of a detected violation** |
+| b15 | delayed ungranted access via getter fired during argument marshaling | **BLOCKED** (fixed) | violations now propagate through marshaling: formatValue rethrows containment violations and the completion value is probed before the verdict issues. Breach recorded as ungranted-resource naming DEMO_SECRET | resolved (was HIGH - silent suppression) |
 
 ### Deep dives
 
@@ -111,6 +111,8 @@ and stringified via fallback. Result: `outcome: "executed"`, no breaches —
 even though the system *detected* the violation. Detection that is silently
 discarded is worse than no detection: it manufactures false confidence in
 the receipt log.
+
+Fixed: `formatValue now rethrows containment violations and `checkAndRun` probes the completion value before issuing a verdict, so this class of delayed access records an ungranted-resource breach and returns BLOCKED (see tests/guardrail-marshaling.test.ts).
 
 **B06 — the grant model authorizes flows it cannot see through (high,
 design).** With one env-read grant and one network-host grant, smuggling a
@@ -153,7 +155,7 @@ failure modes are specific and fixable.**
    realistic tasks hard-fail on scanner defects (declared-function params,
    catch params, import extension mapping). A guard that blocks
    `function helper(items)` cannot ship to agents that write helpers.
-4. **One detection-suppression bug** (b15) turns caught violations into
+4. **One detection-suppression bug** (b15, now fixed) turned caught violations into
    clean verdicts — this should be treated as a correctness emergency for
    the receipt-log guarantee specifically.
 
