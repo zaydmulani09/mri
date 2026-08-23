@@ -23,6 +23,16 @@ export type {
   TestCoverageOptions,
 } from "./test-coverage.js";
 export {
+  analyzeComplexity,
+  maxComplexityByPath,
+} from "./complexity.js";
+export type {
+  ComplexityReport,
+  FileComplexity,
+  FunctionComplexity,
+  ComplexityOptions,
+} from "./complexity.js";
+export {
   scoreFileRisks,
   CHURN_WEIGHT_POINTS,
   COVERAGE_PENALTY_POINTS,
