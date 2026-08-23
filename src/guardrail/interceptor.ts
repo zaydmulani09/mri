@@ -149,9 +149,15 @@ export function checkAndRun(
     const value = vm.runInContext(executableCode, context, {
       timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     });
+    // A returned value can carry delayed violations: getters or proxies that
+    // stay quiet during execution and only fire when the host inspects the
+    // result. Force that inspection here, inside the containment boundary, so
+    // the violation becomes a blocked verdict instead of a surprise on the
+    // host side.
+    marshalReturnValue(value);
     return { outcome: "executed", value };
   } catch (error) {
-    if (error instanceof ContainmentViolation) {
+    if (isContainmentViolation(error)) {
       return { outcome: "blocked", breaches: [error.breach] };
     }
     // Defense in depth: checkAndRun must NEVER let an exception escape.
@@ -514,6 +520,21 @@ class ContainmentViolation extends Error {
   constructor(readonly breach: ContainmentBreach) {
     super(breach.message);
     this.name = "ContainmentViolation";
+  }
+}
+
+export function isContainmentViolation(error: unknown): error is ContainmentViolation {
+  return error instanceof ContainmentViolation;
+}
+
+// Forces any getter/proxy wired into the completion value to fire while still
+// inside checkAndRun's containment boundary. Only containment violations
+// propagate; ordinary non-serializable values (functions, cycles) are fine.
+function marshalReturnValue(value: unknown): void {
+  try {
+    JSON.stringify(value);
+  } catch (error) {
+    if (isContainmentViolation(error)) throw error;
   }
 }
 
