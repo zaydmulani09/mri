@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 // Scripted terminal capture: runs real commands, captures their real
 // stdout/stderr bytes, and emits an asciinema v2 (.cast) file plus a plain
 // .txt transcript. Pacing delays affect event TIMESTAMPS only - every byte
