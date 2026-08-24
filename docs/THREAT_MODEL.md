@@ -18,7 +18,9 @@
 > verified end-to-end against a real codebase (sindresorhus/got at mri
 > `40ba1d8`): ungranted imports are refused before anything executes, and
 > in-scope code runs against inert stubs — captured verbatim in
-> `examples/reports/got-analysis.md`. The limitations below all still apply.
+> `examples/reports/got-analysis.md`. The limitations below are the ones
+> that still hold after the isolate backend and scanner-precision fixes;
+> superseded node:vm-era caveats have been removed.
 
 ## Assets being protected
 
@@ -69,19 +71,20 @@ Each row names the mechanism and where it lives.
    is structurally closed - the guest `Function` constructor compiles
    in-isolate only, and `process` does not exist inside. Regression tests
    pin both payloads in `tests/guardrail-interceptor.test.ts`.
-3. **Capability overreach via imports.** `fs`, `child_process`, network
+2. **Capability overreach via imports.** `fs`, `child_process`, network
    builtins (`http`, `https`, `net`, `dgram`, `dns`, `tls`) are classified
    (`classifyModuleSpecifier`) and allowed only if the corresponding
    resource category has at least one grant. Node builtins with **no**
    grant category (e.g. `vm`, `worker_threads`, `os`) are never allowed at
    all. Package imports require matching external symbol/module grants.
-2. **Secret environment access.** `process.env.NAME` is checked per variable
+3. **Secret environment access.** `process.env.NAME` is checked per variable
    name, per mode (read/write), both statically and at runtime through a
    Proxy. `Object.keys(process.env)` and friends throw — enumeration is not
    permitted even for granted variables.
 4. **Unapproved network egress.** `fetch` requires a literal URL whose
-   host/port/protocol matches a network grant; re-checked at call time by
-   the runtime bridge.
+   host/port/protocol matches a network grant; and because grants alone do
+   not perform I/O in the isolate, a fetch without a host-provided network
+   bridge is recorded as a denial instead of silently doing nothing.
 5. **Evasion via indirection.** Dynamic imports (`import(expr)`),
    non-literal `require()`, computed `fetch` URLs, and unnamed
    `process.env` access cannot be proven safe, so they are blocked as
@@ -94,10 +97,17 @@ Each row names the mechanism and where it lives.
    generated from the code graph (`generateAllowlist`), only `resolved`
    edges produce grants. Ambiguous references are excluded from the
    allowlist and surfaced on its `unresolved` list for a human to resolve.
-9. **Runtime bypass attempts.** Even after passing the static gate, calls
-   through the bridged `require`/`process`/`fetch` surfaces re-verify grants
-   at execution time. A wall-clock timeout (default 1000 ms) bounds runaway
-   snippets.
+9. **Runtime bypass attempts and resource abuse.** Even after passing the
+   static gate, calls through the bridged `require`/`process` surfaces
+   re-verify grants at execution time; imported project files execute
+   never (inert data snapshots only). Each run is bounded by both a
+   wall-clock timeout (default 1000 ms) and an isolate memory limit
+   (default 128 MB); a watchdog hard-disposes the isolate on overrun and
+   the run is recorded as a containment block, never a clean execution.
+10. **Suppressed detections.** Guest-recorded denials are authoritative on
+    every code path — including throws that cross marshaling boundaries or
+    runtime failures — so a detected violation always reaches the verdict
+    (the failure mode benchmark case b15 exposed and closed).
 
 Every block is a structured `ContainmentBreach` with a stable `kind`
 (`parse-failure`, `disallowed-import`, `unverifiable-import`,
@@ -109,6 +119,37 @@ Threat actors this addresses: a misbehaving or prompt-injected LLM agent
 writing code that reaches beyond its task; sloppy generated code that
 accidentally touches secrets; and replay/audit needs ("show me exactly why
 this was blocked").
+
+## Empirical evidence
+
+These claims are not self-assessed; they come from an adversarial benchmark
+built to break the system, re-run after the isolate backend and
+scanner-precision fixes. Full per-case output:
+[examples/benchmark/ADVERSARIAL_REPORT.md](../examples/benchmark/ADVERSARIAL_REPORT.md)
+(raw captures in its `results.json`; harness runs every case through the
+real `mri guard --json` CLI).
+
+- **Suite A — legitimate tasks: 18/19 EXECUTE.** The original run found a
+  5/19 hard false-block rate (plus 3 degraded results) caused by scanner
+  binding defects (declared-function parameters, catch parameters, loop-head
+  declarations, `.js`→`.ts` import mapping). All fixed; the one remaining
+  block (a17, real filesystem read under a granted scope) is denied **by
+  design** because no filesystem capability bridge exists yet — recorded as
+  a denial, not a false positive.
+- **Suite B — adversarial escapes: every attack class fails closed.**
+  The two complete sandbox escapes from the original run (b01/b02,
+  cross-realm `.constructor.constructor` against node:vm) are now BLOCKED
+  with zero host leakage and pinned by regression tests. Four cases report
+  EXECUTED but are contained-by-construction with zero side effects:
+  deferred work dies with the disposed isolate (b03), prototype pollution
+  is guest-realm-only (b10), imported modules are inert data (b12),
+  `Error.stack` is host-anonymized (b14). The silent suppression bug (b15:
+  a detected violation vanishing into argument marshaling) is fixed twice
+  over — marshaling rethrows, and the isolate records denials before any
+  wrapper can intervene.
+- **Verdict diff vs the pre-isolate baseline: exactly 9 flips, all in the
+  correct direction** (2 escapes EXECUTED→BLOCKED, 6 legitimate tasks
+  BLOCKED→EXECUTED, b12 BLOCKED→EXECUTED with zero side effects).
 
 ## What it explicitly does NOT protect against
 
@@ -126,10 +167,13 @@ Read this list as the honest price tag of the current design.
 2. **Host-side compromise.** The guardrail runs in-process with the full
    privileges of the host. A compromised host, a malicious orchestrator, or
    a tampered allowlist/graph makes every guarantee void.
-3. **Side-channel attacks.** Timing analysis, cache channels, and similar
-   are out of scope. Resource exhaustion is only partially bounded: there is
-   an execution timeout but **no memory cap**, so a memory-hungry snippet
-   can degrade or OOM the host process before the timeout fires.
+3. **Side-channel attacks and post-verdict semantics.** Timing analysis,
+    cache channels, and similar are out of scope. Resource exhaustion is
+    bounded per run (wall-clock timeout plus an isolate memory limit,
+    watchdog-disposed on overrun), but the verdict is synchronous: guest
+    work deferred past the verdict window is killed when the isolate is
+    disposed — it cannot produce side effects, and legitimate deferred work
+    does not complete either (benchmark b03, contained-by-construction).
 4. **Anything not visible to the AST scan of a single snippet.** The static
    gate sees one JavaScript snippet. It has no data-flow/taint analysis, no
    inter-procedural reasoning across files, and no view of values produced
@@ -190,8 +234,9 @@ boundary" claims become defensible:
     around the host process).
 2. Data-flow awareness for grant combinations (env var to network pairing,
     benchmark finding b06).
-3. TypeScript/Python scanning parity in the code gate (benchmark Suite A
-    false-block class).
+3. TypeScript/Python scanning parity in the code gate (today's scanner is
+    JavaScript-only; the benchmark's Suite A false-block class within
+    JavaScript is fixed).
 4. Independent security review and fuzzing of `code-scan.ts`, the isolate
     bootstrap, and the bridge surfaces.
 5. Bridged real capabilities behind guarded require/fetch with the taint
