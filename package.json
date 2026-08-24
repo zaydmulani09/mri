@@ -75,7 +75,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "postinstall": "node scripts/check-install.mjs",
-    "build:dashboard": "npm --prefix dashboard run build"
+    "build:dashboard": "npm --prefix dashboard run build",
+    "setup-hooks": "node scripts/setup-hooks.mjs",
+    "prepare": "npm run setup-hooks"
   },
   "dependencies": {
     "ignore": "^7.0.6",
