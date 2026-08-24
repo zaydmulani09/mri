@@ -77,8 +77,14 @@ export function analyzeCode(code: string): CodeScan {
   const boundNodes = new Set<number>();
   const consumedNodes = new Set<number>();
 
-  const declareName = (nameNode: Node | null): void => {
-    if (!nameNode || nameNode.type !== "identifier") return;
+      const declareName = (nameNode: Node | null): void => {
+    if (
+      !nameNode ||
+      (nameNode.type !== "identifier" &&
+        nameNode.type !== "shorthand_property_identifier_pattern")
+    ) {
+      return;
+    }
     declaredNames.add(nameNode.text);
     boundNodes.add(nameNode.id);
   };
@@ -156,11 +162,12 @@ export function analyzeCode(code: string): CodeScan {
         // declaring every named child except the loop body (last child).
         const left = node.childForFieldName("left");
         if (left) {
-          declareSubtree(left);
+          // for-in/of expose the head binding as a bare identifier via the
+          // `left` field; declare it directly (declareSubtree on a bare
+          // identifier no-ops since it only walks children).
+          if (left.type === "identifier") declareName(left);
+          else declareSubtree(left);
         } else {
-          // for-in/of: children[0] is the head binding (identifier or
-          // destructuring pattern); everything after it is the iterated
-          // expression (references stay references) and the body.
           const head = node.namedChildren[0];
           if (head) {
             if (head.type === "identifier") declareName(head);
