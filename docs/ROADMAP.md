@@ -92,10 +92,10 @@ got stands as the reference demo.
 **Phase E — Hardening & packaging.** Remaining in the order the threat
 model asks for: TypeScript/Python parity in the containment scanner;
 OS-level isolation beneath the isolate; data-flow awareness between grant
-categories; then schema versioning guarantees and package publishing.
-(Incremental rebuilds and watch mode have landed — see P4 below. Memory
-caps beside the wall-clock timeout landed with the isolate backend —
-default 128 MB per run.)
+categories; then schema versioning guarantees. (Incremental rebuilds and
+watch mode have landed — see P4 below. Memory caps beside the wall-clock
+timeout landed with the isolate backend — default 128 MB per run.
+Package publishing has landed too: `mri-codeintel@0.1.0` is live on npm.)
 *Depends on:* A for scanner work; D feedback for packaging priorities.
 
 ## Known open items (not blockers)

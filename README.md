@@ -58,13 +58,29 @@ which ships with Node from 22.5). The installer verifies Node, SQLite and the
 tree-sitter native bindings up front and prints actionable instructions if
 anything is missing.
 
+### From npm
+
+The package is published as **`mri-codeintel`**; the installed command is
+**`mri`**.
+
+```bash
+npm install -g mri-codeintel
+mri --help
+```
+
+Or run it without installing globally:
+
+```bash
+npx mri-codeintel analyze /path/to/repo
+```
+
+The package bundles its tree-sitter native dependencies, so a plain install
+works out of the box on platforms with prebuilt binaries (win32/x64, darwin
+arm64+x64, linux arm64+x64) — no compiler toolchain needed.
+
 ### From source
 
-The npm package (`mri-codeintel`) is **not yet published**, so installing
-from source is the supported path right now. When it ships, the installed
-command will be `mri`, and the package will bundle its tree-sitter native
-dependencies so no compiler toolchain is needed on platforms with prebuilt
-binaries (win32/x64, darwin arm64+x64, linux arm64+x64).
+For developing mri itself, build from the repository:
 
 ```bash
 git clone https://github.com/zaydmulani09/mri
@@ -86,7 +102,7 @@ The CLI ships eight commands: `extract`, `build`, `blast-radius`, `analyze`,
 `ask`, `guard`, `serve`, and `mcp`.
 
 ```bash
-node dist/cli/index.js analyze /path/to/repo
+npx mri-codeintel analyze /path/to/repo
 ```
 
 ```text
@@ -120,7 +136,7 @@ TEST COVERAGE
 `tests/fixtures/analysis_repo`.)
 
 ```bash
-node dist/cli/index.js blast-radius fn:src/api.js#fetchUser --format tree
+npx mri-codeintel blast-radius fn:src/api.js#fetchUser --format tree
 ```
 
 ```text
@@ -150,7 +166,7 @@ cross-realm escapes that defeated the earlier node:vm backend —
 [examples/benchmark/ADVERSARIAL_REPORT.md](examples/benchmark/ADVERSARIAL_REPORT.md).
 
 ```bash
-node dist/cli/index.js guard fn:src/api.js#fetchUser snippet.js --path /path/to/repo
+npx mri-codeintel guard fn:src/api.js#fetchUser snippet.js --path /path/to/repo
 ```
 
 ```text

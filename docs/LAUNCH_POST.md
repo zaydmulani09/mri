@@ -7,8 +7,8 @@
 >   "a weird bug / unexpected result" as a real post; the benchmark gave us
 >   two, both documented in the repo.
 > - Every number traces to an artifact (table at the bottom). The npm
->   package is NOT published yet, so neither draft claims `npm install`
->   works today.
+>   package is published (`mri-codeintel@0.1.0`); `npm install -g` and
+>   `npx` were verified against the live registry.
 
 ---
 
@@ -124,9 +124,9 @@ Harness, cases, and raw results: https://github.com/zaydmulani09/mri
 | Nothing invented | PASS — "every tool we tried" motivation removed (undocumented experience); all numbers trace via table below |
 | First two sentences: problem/target/mechanism | PASS — both candidates open with mechanism, no mission statement |
 | Adjectives removed or backed | PASS — "deterministic" backed by schema CHECK; "fail-closed" backed by 33-case results; no "fast/robust/seamless" |
-| Real limitation stated plainly | PASS — "It does not:" list; a17; npm not yet published stated |
+| Real limitation stated plainly | PASS — "It does not:" list; a17; pre-alpha status stated in README |
 | Differs from two closest tools | PASS — CodeQL/semgrep + LSIF/SCIP, mechanism-level, no superiority claim |
-| Quickstart commands actually run | PASS — clone/npm install/build/guard/analyze all executed this session in clean archive stages; `npm -g` claim removed (package unpublished) |
+| Quickstart commands actually run | PASS — clone/npm install/build/guard/analyze all executed this session in clean archive stages; `npm install -g mri-codeintel` and `npx` verified against the live registry |
 | README examples match current CLI | PASS — commands cross-checked against src/cli/index.ts USAGE |
 | Hype tells removed | PASS — cut: "most interesting", "got burned", "hired a hostile reviewer", "the one that scared us more", "the humbling one", "Happy to answer questions", universal-lesson closer |
 | One real reason to exist | PASS — candidate 1: benchmark-evidenced containment; candidate 2: two documented bugs |
@@ -152,4 +152,4 @@ Harness, cases, and raw results: https://github.com/zaydmulani09/mri
 | Node ≥ 22.5, bundled grammars, mri-codeintel bin | package.json; scripts/check-install.mjs |
 | VS Code extension / dashboard+serve / MCP | vscode-extension/; dashboard/; src/cli/serve-command.ts; src/mcp/ |
 | 162 tests / 24 files | vitest run at 3ecfba4 |
-| npm package not yet published | package.json (unpublished name mri-codeintel); publish on hold per task context |
+| npm package published | registry: mri-codeintel@0.1.0; fresh `npm install -g` + `npx` verified (`mri --help`) |
