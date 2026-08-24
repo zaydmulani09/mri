@@ -1,4 +1,4 @@
-﻿import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

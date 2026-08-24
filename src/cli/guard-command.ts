@@ -1,9 +1,9 @@
-﻿import { promises as fs, readFileSync } from "node:fs";
+import { promises as fs, readFileSync } from "node:fs";
 import path from "node:path";
 import { buildRepoGraph, openGraph } from "../graph/index.js";
 import { generateAllowlist, loadResourceConfig } from "../guardrail/index.js";
 import type { Allowlist } from "../guardrail/index.js";
-import { checkAndRun, isContainmentViolation } from "../guardrail/interceptor.js";
+import { checkAndRun } from "../guardrail/interceptor.js";
 import type { CheckAndRunResult } from "../guardrail/breach.js";
 
 export interface GuardCommandArgs {
@@ -144,12 +144,12 @@ function formatValue(value: unknown): string {
   if (typeof value === "string") return JSON.stringify(value);
   try {
     return JSON.stringify(value) ?? String(value);
-  } catch (error) {
-    // Serialization can trip runtime guards (getters/proxies touching
-    // ungranted resources). A containment violation must propagate to
-    // checkAndRun so the verdict becomes blocked with a breach record;
-    // swallowing it here would report a clean execution after detection.
-    if (isContainmentViolation(error)) throw error;
+  } catch {
+    // Values crossing back from the isolate are plain JSON-decoded data (the
+    // completion value is serialized IN-ISULATE before the verdict), so no
+    // containment violation can fire during host-side marshaling anymore.
+    // Delayed-getter violations are caught inside the isolate and recorded
+    // as breaches before checkAndRun returns (see isolate-runner.ts).
     return String(value);
   }
 }

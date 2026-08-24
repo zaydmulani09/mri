@@ -1,4 +1,4 @@
-﻿// Real-containment execution backend: runs guarded code inside an isolated-vm
+// Real-containment execution backend: runs guarded code inside an isolated-vm
 // V8 isolate (separate heap, separate realm - NOT a node:vm shared-realm
 // context). Cross-boundary surface is limited to explicit Reference bridges,
 // so the `.constructor.constructor` host-realm escape class that defeats
@@ -55,7 +55,7 @@ function buildShimSource(allowlist: Allowlist): string {
   // Breach recorder: payloads are built host-side (authoritative shapes) and
   // handed over as JSON strings.
   lines.push(`globalThis.__mri_recordBreach = function (json) {
-    __mri_breaches.push(JSON.parse(json));
+    __mri_breaches.push(typeof json === 'string' ? JSON.parse(json) : json);
     var err = new Error('blocked by mri policy');
     err.__mri_blocked = true;
     throw err;
@@ -293,6 +293,29 @@ export async function runInIsolate(
         };
       }
       // Any other guest rejection (runtime TypeError, ReferenceError, ...) is
+      // Guest-recorded denials are authoritative even on a rejection path:
+      // if a runtime guard already fired (delayed getters, proxy traps), its
+      // specific breach must reach the verdict, not a generic wrapper.
+      let recorded: ContainmentBreach[] = [];
+      try {
+        recorded = JSON.parse(
+          (await context.eval("JSON.stringify(__mri_breaches)", {
+            timeout: options.timeoutMs,
+          }) as unknown as string) || "[]",
+        ) as ContainmentBreach[];
+      } catch {
+        // isolate unusable; fall through to the generic block below
+      }
+      if (recorded.length > 0) {
+        return {
+          value: undefined,
+          transferred: "untransferable" as const,
+          disposed: false,
+          breaches: recorded,
+          stubCalls,
+          consoleLines,
+        };
+      }
       // recorded as a containment block: a sandbox that could not finish is
       // never reported as a clean execution.
       return {
