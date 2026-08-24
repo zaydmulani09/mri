@@ -1,9 +1,11 @@
 # MRI Architecture
 
-> Status: reflects the implementation as of `feat(analysis): explainable risk
-> scoring and mri analyze report` (August 2026). This document describes what
-> is actually built — extraction, graph, analysis, CLI. Planned layers are
-> listed at the end and are not described as if they exist.
+> Status: reflects the implementation as of August 2026 — through the
+> isolate-based guardrail backend with scanner precision fixes, the stdio
+> MCP server, and incremental rebuild/watch mode (git history has the exact
+> order). This document describes what is actually built — extraction,
+> graph, analysis, CLI, guardrail, MCP. Planned layers are listed at the end
+> and are not described as if they exist.
 
 MRI is a local code intelligence engine. It parses a repository, extracts its
 symbols and structure into a graph, stores that graph in SQLite, and answers
@@ -46,8 +48,9 @@ feature built on top of the graph.
 
 ```text
             ┌─────────────────────────────────────────────────┐
-            │                    CLI (src/cli)                │
-            │   extract · build · blast-radius · analyze      │
+            │              CLI (src/cli)                      │
+            │  extract · build · blast-radius · analyze       │
+            │  ask · guard · serve · mcp                      │
             └───────┬──────────────┬───────────────┬──────────┘
                     │              │               │
              ┌──────▼──────┐ ┌─────▼─────┐ ┌───────▼────────┐
@@ -207,6 +210,11 @@ resolved vs ambiguous. These counts are surfaced directly by the CLI because
 the ratio of ambiguity is itself signal about how much of a repo's structure
 MRI could prove.
 
+Incremental mode (`mri build --incremental`) reuses cached per-file
+extractions keyed by content hash and re-runs resolution over the full merged
+symbol set, so results are identical to a full rebuild. `--watch` implies
+`--incremental` and keeps running, rebuilding on file save.
+
 ## Resolution rules and the confidence model
 
 This section is the contract behind the principle stated at the top: what
@@ -320,16 +328,24 @@ history for churn) and return plain data structures:
 ## CLI surface
 
 `mri extract <path>` — JSON dump of per-file symbols + summary.
-`mri build <path>` — full pipeline into SQLite; prints node/edge counts
-including resolved-vs-ambiguous breakdowns.
+`mri build <path> [--incremental] [--watch]` — full pipeline into SQLite;
+prints node/edge counts including resolved-vs-ambiguous breakdowns.
 `mri blast-radius <node-id>` — dependents by depth, confirmed vs ambiguous.
 `mri analyze <path>` — builds the graph and runs all passes; prints the
 report.
+`mri ask "<question>" <path>` — maps a question onto a deterministic intent,
+executes it against the graph, narrates via an optional local Ollama model.
+`mri guard <scope-id> <file | ->` — static allowlist gate, then isolated-vm
+execution; fail-closed in both directions.
+`mri serve <path>` — local dashboard over the built graph, bound to
+127.0.0.1 only.
+`mri mcp <path>` — stdio MCP server exposing graph and analysis tools to AI
+coding agents.
 
 ## Layers above the graph
 
-Two more layers have landed on top of the analysis core since the graph was
-built:
+Three more layers have landed on top of the analysis core since the graph
+was built:
 
 - **Reasoning (`src/reasoning`)** — structured query intents parsed
   deterministically, executed against the stored graph, and narrated from
@@ -351,6 +367,11 @@ built:
   Security claims and their empirical limits are scoped in
   `docs/THREAT_MODEL.md`, with adversarial evidence in
   `examples/benchmark/ADVERSARIAL_REPORT.md`.
+- **MCP integration (`src/mcp`)** — a stdio Model Context Protocol server
+  (`mri mcp <path>`, see `docs/MCP_SERVER.md`) that exposes the same graph
+  and analysis queries as agent tools: blast radius, dead-code verdicts,
+  riskiest files, untested files, and symbol lookup, each returning the same
+  structured data the CLI prints.
 
 ## Not yet built
 
@@ -359,7 +380,6 @@ Tracked here so the boundary between "exists" and "planned" stays honest:
 - The staged public containment demo — script in
   `docs/CONTAINMENT_DEMO_SCRIPT.md`; the enforcement machinery it demos
   (`mri guard`) exists today.
-- Incremental rebuilds, watch mode, language servers, cross-repo indexing —
-  not started.
+- Language servers, cross-repo indexing — not started.
 
 Phase ordering and dependencies live in `docs/ROADMAP.md`.

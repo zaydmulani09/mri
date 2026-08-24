@@ -57,27 +57,13 @@ which ships with Node from 22.5). The installer verifies Node, SQLite and the
 tree-sitter native bindings up front and prints actionable instructions if
 anything is missing.
 
-### From npm (after publish)
-
-The npm package is published as **`mri-codeintel`**; the installed command is
-**`mri`**.
-
-```bash
-npm install -g mri-codeintel
-mri --help
-```
-
-Or use it without installing globally:
-
-```bash
-npx mri-codeintel analyze /path/to/repo
-```
-
-The npm package bundles its tree-sitter native dependencies, so a plain
-`npm install mri-codeintel` works out of the box on platforms with prebuilt binaries
-(win32/x64, darwin arm64+x64, linux arm64+x64) — no compiler toolchain needed.
-
 ### From source
+
+The npm package (`mri-codeintel`) is **not yet published**, so installing
+from source is the supported path right now. When it ships, the installed
+command will be `mri`, and the package will bundle its tree-sitter native
+dependencies so no compiler toolchain is needed on platforms with prebuilt
+binaries (win32/x64, darwin arm64+x64, linux arm64+x64).
 
 ```bash
 git clone https://github.com/zaydmulani09/mri
@@ -95,33 +81,45 @@ npm rebuild tree-sitter tree-sitter-javascript tree-sitter-typescript tree-sitte
 
 ## Usage
 
-The CLI ships six commands: `extract`, `build`, `blast-radius`, `analyze`,
-`ask`, and `guard`.
+The CLI ships eight commands: `extract`, `build`, `blast-radius`, `analyze`,
+`ask`, `guard`, `serve`, and `mcp`.
 
 ```bash
-npx mri analyze /path/to/repo
+node dist/cli/index.js analyze /path/to/repo
 ```
 
 ```text
 ARCHITECTURE
-  files             15   (javascript 11, python 4)
-  symbols           functions 15 | classes 5 | methods 4
-  edges             defines 23 | imports 7 | calls 12 (8 resolved / 4 ambiguous) | inherits 3
+  files             16   (javascript 12, python 4)
+  symbols           functions 19 | classes 5 | methods 4
+  edges             defines 27 | imports 7 | calls 14 (8 resolved / 6 ambiguous) | inherits 3
   external modules  1   [extlib]
 
 TECH DEBT
-  dead code candidates 3   (detail under DEAD CODE)
+  dead code candidates 7   (detail under DEAD CODE)
+
+  risk scores (top 5 of 14 files, window 90d)
+     1. py/klass.py                  score  39   [churn 1 commits (+7pts) | no tests found (+30pts) | max CC 1 (+2pts) | last modified 2026-08-24]
+     2. src/callbacks.js             score  39   [churn 1 commits (+7pts) | no tests found (+30pts) | max CC 1 (+2pts) | last modified 2026-08-24]
+     …
+  highest-complexity functions (top 10 of 22)
+    CC   1  py/helpers.py:1  shrink
+    CC   1  py/klass.py:2  speak
+    …
 
 SECURITY-RELEVANT SIGNALS (gaps in knowledge, not findings)
-  unresolved references   4   "process" x1, "formatter" x1, ...
+  unresolved references   6   "registry.on" x2, "process" x1, ...
 DEAD CODE
-  candidates 3: 2 confirmed-unreferenced, 1 no-resolved-references
+  candidates 7: 4 confirmed-unreferenced, 2 referenced-but-uncalled, 1 no-resolved-references
 TEST COVERAGE
-  estimated coverage 38.5% (5/13 source files, import-based approximation)
+  estimated coverage 35.7% (5/14 source files, import-based approximation)
 ```
 
+(Output abridged; captured from a real run against
+`tests/fixtures/analysis_repo`.)
+
 ```bash
-npx mri blast-radius fn:src/api.js#fetchUser --format tree
+node dist/cli/index.js blast-radius fn:src/api.js#fetchUser --format tree
 ```
 
 ```text
@@ -151,7 +149,7 @@ cross-realm escapes that defeated the earlier node:vm backend —
 [examples/benchmark/ADVERSARIAL_REPORT.md](examples/benchmark/ADVERSARIAL_REPORT.md).
 
 ```bash
-npx mri guard fn:src/api.js#fetchUser snippet.js --path /path/to/repo
+node dist/cli/index.js guard fn:src/api.js#fetchUser snippet.js --path /path/to/repo
 ```
 
 ```text
@@ -226,8 +224,9 @@ resolution/confidence contract.
 
 Built and working today:
 
-- Extraction layer for JS/TS/Python (`mri extract`)
-- Graph construction with resolved-vs-ambiguous tracking (`mri build`)
+- Extraction layer for JS/TS, Python, Go, and Rust (`mri extract`)
+- Graph construction with resolved-vs-ambiguous tracking (`mri build`),
+  including incremental rebuilds (`--incremental`) and watch mode (`--watch`)
 - Dead-code, coverage, complexity, churn-risk, and blast-radius passes
   (`mri analyze`, `mri blast-radius`)
 - Reasoning v0: deterministic question intents over the graph, grounded
@@ -243,7 +242,6 @@ Built and working today:
 In flight / planned:
 
 - Public containment demo per `docs/CONTAINMENT_DEMO_SCRIPT.md`
-- Incremental rebuilds and watch mode
 
 Full phase breakdown by dependency order: [docs/ROADMAP.md](docs/ROADMAP.md)
 

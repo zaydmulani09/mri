@@ -1,9 +1,10 @@
 # Roadmap
 
 Phases ordered by **dependency**, not by date — no timelines are promised.
-Status reflects the tree as of August 2026 (post `fix(cli): surface
-parse-error blind spots`); see `ARCHITECTURE.md` for how each layer works
-and git history for exactly what landed when.
+Status reflects the tree as of August 2026 (post the isolate guardrail
+backend, scanner precision fixes, and incremental rebuild/watch mode); see
+`ARCHITECTURE.md` for how each layer works and git history for exactly what
+landed when.
 
 ## Landed
 
@@ -11,7 +12,8 @@ These exist in `src/` today and are covered by tests.
 
 **P0 — Extraction foundation**
 Gitignore-aware source walker; per-file symbol extraction via tree-sitter
-for JavaScript, TypeScript/TSX, and Python; `mri extract` JSON dump.
+for JavaScript, TypeScript/TSX, Python, Go, and Rust; `mri extract` JSON
+dump.
 
 **P1 — Code graph**
 SQLite store (`nodes`/`edges`/`meta`); import, inheritance, and call
@@ -54,6 +56,13 @@ Since then, two hardening rounds landed and were adversarially verified
   (18/19 execute; one denial-by-design pending a filesystem bridge), while
   every adversarial attack class still fails closed.
 
+**P4 — Incremental rebuilds & watch mode**
+`mri build --incremental` reuses cached per-file extractions for files whose
+content hash is unchanged — resolution still runs over the full merged
+symbol set, so results are identical to a full rebuild. `--watch` implies
+`--incremental` and keeps running, rebuilding on file save. Covered by
+`tests/incremental-build.test.ts`.
+
 ## Planned (dependency order)
 
 **Phase A — Land enforcement.** Done — shipped as G1 above.
@@ -83,9 +92,10 @@ got stands as the reference demo.
 **Phase E — Hardening & packaging.** Remaining in the order the threat
 model asks for: TypeScript/Python parity in the containment scanner;
 OS-level isolation beneath the isolate; data-flow awareness between grant
-categories; then incremental rebuilds/watch mode, schema versioning
-guarantees, and package publishing. (Memory caps beside the wall-clock
-timeout have landed with the isolate backend — default 128 MB per run.)
+categories; then schema versioning guarantees and package publishing.
+(Incremental rebuilds and watch mode have landed — see P4 below. Memory
+caps beside the wall-clock timeout landed with the isolate backend —
+default 128 MB per run.)
 *Depends on:* A for scanner work; D feedback for packaging priorities.
 
 ## Known open items (not blockers)
