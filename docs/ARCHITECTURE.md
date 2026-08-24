@@ -339,16 +339,26 @@ built:
 - **Guardrail (`src/guardrail`)** — allowlists derived *from the code
   graph* (`generate.ts`: resolved edges grant, ambiguous edges are excluded
   and surfaced on an explicit `unresolved` list), plus validated resource
-  grants (`resources.ts`). The scan/interceptor enforcement half is present
-  in the working tree and still landing. Security claims are scoped in
-  `docs/THREAT_MODEL.md`.
+  grants (`resources.ts`). Enforcement is two-stage: a tree-sitter static
+  gate (`code-scan.ts`) checks every import, resource access, and free
+  identifier against the allowlist before anything runs — rewriting
+  imports into guarded `require` bridges — and surviving code executes in
+  `isolate-runner.ts` inside an **isolated-vm V8 isolate** (separate realm
+  and heap). Host contact crosses only data-only `ivm.Reference` bridges
+  that re-check policy per call; imported files are inert data snapshots,
+  granted symbols are stub receipts, and each run is bounded by timeout and
+  memory limit with guest-recorded denials always reaching the verdict.
+  Security claims and their empirical limits are scoped in
+  `docs/THREAT_MODEL.md`, with adversarial evidence in
+  `examples/benchmark/ADVERSARIAL_REPORT.md`.
 
 ## Not yet built
 
 Tracked here so the boundary between "exists" and "planned" stays honest:
 
-- Containment CLI entry point and public demo — spec'd in
-  `docs/CONTAINMENT_DEMO_SCRIPT.md`, gated on the enforcement half above.
+- The staged public containment demo — script in
+  `docs/CONTAINMENT_DEMO_SCRIPT.md`; the enforcement machinery it demos
+  (`mri guard`) exists today.
 - Incremental rebuilds, watch mode, language servers, cross-repo indexing —
   not started.
 

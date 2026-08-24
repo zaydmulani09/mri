@@ -41,6 +41,19 @@ fail-closed in both directions against sindresorhus/got at mri `40ba1d8`:
 ungranted `require("node:fs")` refused before execution; in-scope code ran
 against inert stubs (`examples/reports/got-analysis.md`).
 
+Since then, two hardening rounds landed and were adversarially verified
+([examples/benchmark/ADVERSARIAL_REPORT.md](../examples/benchmark/ADVERSARIAL_REPORT.md)):
+
+- **isolate-vm execution backend** — guarded code runs in a separate V8
+  isolate (own realm/heap) behind data-only Reference bridges; the two
+  cross-realm escape classes from the benchmark are structurally closed and
+  regression-pinned.
+- **scanner precision fixes** — declared-function params, catch params,
+  loop-head bindings, method params, shorthand destructuring, and `.js`→`.ts`
+  import mapping. Legitimate-task false blocks dropped from 5/19 to 0
+  (18/19 execute; one denial-by-design pending a filesystem bridge), while
+  every adversarial attack class still fails closed.
+
 ## Planned (dependency order)
 
 **Phase A — Land enforcement.** Done — shipped as G1 above.
@@ -67,10 +80,12 @@ tops churn-based risk); blast-radius depth confirmed for hub nodes
 function (true depth 1). Running the remaining four candidates is optional;
 got stands as the reference demo.
 
-**Phase E — Hardening & packaging.** In the order the threat model asks
-for: TypeScript/Python parity in the containment scanner; memory/CPU caps
-beside the wall-clock timeout; OS-level isolation story; then incremental
-rebuilds/watch mode, schema versioning guarantees, and package publishing.
+**Phase E — Hardening & packaging.** Remaining in the order the threat
+model asks for: TypeScript/Python parity in the containment scanner;
+OS-level isolation beneath the isolate; data-flow awareness between grant
+categories; then incremental rebuilds/watch mode, schema versioning
+guarantees, and package publishing. (Memory caps beside the wall-clock
+timeout have landed with the isolate backend — default 128 MB per run.)
 *Depends on:* A for scanner work; D feedback for packaging priorities.
 
 ## Known open items (not blockers)
