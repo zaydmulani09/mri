@@ -17,17 +17,21 @@ describe("code-scan local binding precision", () => {
     const scan = analyzeCode(
       "function* pages(items) {\n  yield items.length;\n}\nfor (const p of pages) p;",
     );
-    // `pages` is a genuine unknown reference (not declared anywhere);
-    // both occurrences of the loop variable `p` must be bound.
-    expect(scan.identifiers.map((i) => i.name).sort()).toEqual(["pages"]);
+    // `pages` (the local generator) and `p` (the loop head) are both
+    // bound; nothing else appears in the snippet.
+    expect(scan.identifiers).toEqual([]);
   });
 
   it("binds catch-clause parameters", () => {
     const scan = analyzeCode(
       "try {\n  computeTotal([]);\n} catch (error) {\n  console.log(error);\n}",
     );
-    // computeTotal is a granted-symbol reference; console is a safe global.
-    expect(scan.identifiers).toEqual([]);
+    // Scan-level: computeTotal and console are references (grant/safe-global
+    // filtering happens in the interceptor). `error` must NOT appear.
+    expect(scan.identifiers.map((i) => i.name).sort()).toEqual([
+      "computeTotal",
+      "console",
+    ]);
   });
 
   it("binds catch destructuring; body refs still need grants", () => {
