@@ -1,4 +1,4 @@
-// Real-containment execution backend: runs guarded code inside an isolated-vm
+﻿// Real-containment execution backend: runs guarded code inside an isolated-vm
 // V8 isolate (separate heap, separate realm - NOT a node:vm shared-realm
 // context). Cross-boundary surface is limited to explicit Reference bridges,
 // so the `.constructor.constructor` host-realm escape class that defeats
@@ -17,7 +17,7 @@
 import ivm from "isolated-vm";
 import type { Allowlist } from "./types.js";
 import type { ContainmentBreach } from "./breach.js";
-import { checkModuleAccess } from "./policy-lookup.js";
+import { checkModuleAccess, classifyModuleSpecifier } from "./policy-lookup.js";
 import { findEnvironmentGrant } from "./policy-lookup.js";
 
 export interface SandboxImplementations {
@@ -72,7 +72,17 @@ function buildShimSource(allowlist: Allowlist): string {
       throw new Error('require unavailable: ' + String(e.message || e));
     }
     if (answer && answer.deny) __mri_recordBreach(answer.deny);
-    return answer.data ? JSON.parse(answer.data) : {};
+    var obj = answer.data ? JSON.parse(answer.data) : {};
+    (answer.stubNames || []).forEach(function (entry) {
+      obj[entry.name] = function () {
+        var args = [].slice.call(arguments).map(function (a) {
+          try { return JSON.stringify(a) ?? String(a); } catch (e) { return String(a); }
+        });
+        __mri_host_stub_call.applySync(undefined, [JSON.stringify(entry.id), JSON.stringify(args)]);
+        return { mri: 'granted-symbol-stub', symbol: entry.id, args: args };
+      };
+    });
+    return obj;
   };`);
 
   // Guarded process: only .env.<name> reads/writes exist, each individually
@@ -111,9 +121,9 @@ function buildShimSource(allowlist: Allowlist): string {
 
   // Console passthrough (host prints; nothing of the host realm leaks in).
   lines.push(`globalThis.console = {
-    log: function () { __mri_host_console.applySync(undefined, [['log'].concat([].slice.call(arguments).map(String))]); },
-    error: function () { __mri_host_console.applySync(undefined, [['error'].concat([].slice.call(arguments).map(String))]); },
-    warn: function () { __mri_host_console.applySync(undefined, [['warn'].concat([].slice.call(arguments).map(String))]); }
+    log: function () { __mri_host_console.applySync(undefined, [JSON.stringify(['log'].concat([].slice.call(arguments).map(String)))]); },
+    error: function () { __mri_host_console.applySync(undefined, [JSON.stringify(['error'].concat([].slice.call(arguments).map(String)))]); },
+    warn: function () { __mri_host_console.applySync(undefined, [JSON.stringify(['warn'].concat([].slice.call(arguments).map(String)))]); },
   };`);
 
   // Granted-symbol stubs: inert receipts derived purely from allowlist
@@ -178,6 +188,7 @@ export async function runInIsolate(
 
     const hostRequire = new ivm.Reference((specifierJson: string) => {
       const specifier = specifierJson;
+      const classification = classifyModuleSpecifier(specifier);
       const breach = checkModuleAccess(specifier, [], allowlist, {
         line: 0,
         attempted: `require(${JSON.stringify(specifier)})`,
@@ -188,8 +199,28 @@ export async function runInIsolate(
         return JSON.stringify({ deny: breach });
       }
       const data = implementations.modules?.[specifier];
+      // Allowed-file imports get in-isolate stub functions for the granted
+      // symbols that file defines (parity with global granted stubs).
+      const stubNames: Array<{ name: string; id: string }> = [];
+      if (classification.kind === "relative") {
+        const like = classification.pathLike;
+        const likeTs = like.replace(/\.js$/i, ".ts");
+        for (const symbol of allowlist.symbols) {
+          if (symbol.external || symbol.path === null) continue;
+          const p = symbol.path;
+          if (
+            p === like ||
+            p.endsWith("/" + like) ||
+            p === likeTs ||
+            p.endsWith("/" + likeTs)
+          ) {
+            stubNames.push({ name: symbol.name, id: symbol.nodeId });
+          }
+        }
+      }
       return JSON.stringify({
         data: data === undefined ? null : JSON.stringify(data),
+        stubNames,
       });
     });
 
@@ -270,11 +301,14 @@ export async function runInIsolate(
       // in-isolate (isolated-vm only reliably copies primitives across).
       const raw =
         (await context.eval(
-          "JSON.stringify(eval(" + JSON.stringify(code) + "))",
+          // JSON.stringify(undefined) returns undefined, and an undefined
+          // guest completion is non-transferable across the ivm boundary -
+          // coalesce it to a sentinel string inside the isolate.
+          '(JSON.stringify(eval(' + JSON.stringify(code) + ')) ?? "__mri_undefined__")',
           { timeout: options.timeoutMs },
         ) as unknown as string) ?? "";
-      if (raw === "") {
-        transferred = "untransferable";
+      if (raw === "__mri_undefined__" || raw === "") {
+        transferred = "copy";
         value = undefined;
       } else {
         value = JSON.parse(raw) as unknown;

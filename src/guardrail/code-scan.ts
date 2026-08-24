@@ -147,6 +147,12 @@ export function analyzeCode(code: string): CodeScan {
         declareName(node.childForFieldName("name"));
         break;
       }
+      case "method_definition": {
+        // Constructor/method parameters are ordinary locals of the class body
+        // (benchmark Suite A a08: `constructor(items)` flagged `items`).
+        declareSubtree(node.childForFieldName("parameters"));
+        break;
+      }
       case "arrow_function":
       case "function":
       case "function_expression": {
