@@ -1,5 +1,4 @@
-import { promises as fs, readFileSync } from "node:fs";
-import vm from "node:vm";
+﻿import { promises as fs, readFileSync } from "node:fs";
 import path from "node:path";
 import { buildRepoGraph, openGraph } from "../graph/index.js";
 import { generateAllowlist, loadResourceConfig } from "../guardrail/index.js";
@@ -35,7 +34,7 @@ export async function runGuardCommand(args: GuardCommandArgs): Promise<CommandOu
     try {
       if (!store.getNode(args.scopeId)) {
         throw new Error(
-          `unknown scope node id '${args.scopeId}' — run \`mri build\` and check \`nodes\` table for valid ids`,
+          `unknown scope node id '${args.scopeId}' â€” run \`mri build\` and check \`nodes\` table for valid ids`,
         );
       }
 
@@ -54,8 +53,7 @@ export async function runGuardCommand(args: GuardCommandArgs): Promise<CommandOu
           ? readFileSync(0, "utf8")
           : await fs.readFile(path.resolve(args.source), "utf8");
 
-      const context = buildContainmentContext(allowlist);
-      const result = checkAndRun(code, allowlist, context, {
+      const result = await checkAndRun(code, allowlist, {
         timeoutMs: args.timeoutMs ?? undefined,
       });
 
@@ -80,11 +78,11 @@ function renderHuman(
 ): string {
   const lines: string[] = [];
   if (result.outcome === "blocked") {
-    lines.push(`BLOCKED — code refused for scope ${scopeId}`);
+    lines.push(`BLOCKED â€” code refused for scope ${scopeId}`);
     lines.push(`${result.breaches.length} containment breach(es):`);
     lines.push("");
     for (const breach of result.breaches) {
-      lines.push(`  line ${breach.line} · ${breach.kind}`);
+      lines.push(`  line ${breach.line} Â· ${breach.kind}`);
       lines.push(`    attempted: ${breach.attempted}`);
       if (breach.rule) {
         lines.push(`    rule:      ${breach.rule.area} -> expected ${breach.rule.expected}`);
@@ -102,7 +100,7 @@ function renderHuman(
   lines.push(`EXECUTED cleanly within the allowlist for ${scopeId}`);
   lines.push(`return value: ${formatValue(result.value)}`);
   lines.push(
-    `note: calls to granted repo symbols ran against inert stubs — this verifies containment, not behavior`,
+    `note: calls to granted repo symbols ran against inert stubs â€” this verifies containment, not behavior`,
   );
   lines.push(
     `allowlist: ${allowlist.symbols.length} symbol(s), ${allowlist.files.length} file(s) granted` +
@@ -111,24 +109,6 @@ function renderHuman(
         : ""),
   );
   return lines.join("\n");
-}
-
-function buildContainmentContext(allowlist: Allowlist): vm.Context {
-  const sandbox: Record<string, unknown> = Object.create(null);
-  sandbox["console"] = {
-    log: (...args: unknown[]) => console.log(...args),
-    error: (...args: unknown[]) => console.error(...args),
-    warn: (...args: unknown[]) => console.warn(...args),
-  };
-  for (const symbol of allowlist.symbols) {
-    if (symbol.external) continue;
-    sandbox[symbol.name] = (...callArgs: unknown[]) => ({
-      mri: "granted-symbol-stub",
-      symbol: symbol.nodeId,
-      args: callArgs.map((a) => formatValue(a)),
-    });
-  }
-  return vm.createContext(sandbox);
 }
 
 function renderJson(
