@@ -100,4 +100,19 @@ try {
   fail(nativeBindingFailure(error));
 }
 console.log("mri: tree-sitter native bindings ok");
+
+// 4. isolated-vm (guard execution backend) -----------------------------------
+try {
+  const ivm = requireFromPackage("isolated-vm");
+  const isolate = new ivm.Isolate();
+  isolate.dispose();
+} catch (error) {
+  fail([
+    "could not load isolated-vm: " + String(error.message).split("\n")[0],
+    "mri guard executes untrusted code inside an isolated-vm V8 isolate.",
+    "Reinstall the package so the prebuilt binary for your platform is",
+    "fetched, or run: npm rebuild isolated-vm",
+  ]);
+}
+console.log("mri: isolated-vm ok");
 console.log("mri: installation verified");

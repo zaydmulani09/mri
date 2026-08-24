@@ -86,6 +86,25 @@ export async function checkRuntime(command: string): Promise<RuntimeCheckResult>
     }
   }
 
+  if (command === "guard") {
+    try {
+      const ivmModule = await import("isolated-vm");
+      const ivm =
+        (ivmModule as unknown as { default?: { Isolate: new () => { dispose(): void } } })
+          .default ?? (ivmModule as unknown as { Isolate: new () => { dispose(): void } });
+      const isolate = new ivm.Isolate();
+      isolate.dispose();
+    } catch (error) {
+      return {
+        ok: false,
+        message:
+          "mri guard requires the isolated-vm native module (" +
+          (error as Error).message.split("\n")[0] +
+          ").\nReinstall the package so the prebuilt binary for your platform is\nfetched, or run `npm rebuild isolated-vm` inside the mri package directory.",
+      };
+    }
+  }
+
   return { ok: true, message: "" };
 }
 
