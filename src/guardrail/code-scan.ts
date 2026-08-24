@@ -1,4 +1,4 @@
-import type Parser from "tree-sitter";
+﻿import type Parser from "tree-sitter";
 import { parserFor } from "../extraction/loader.js";
 
 type Node = Parser.SyntaxNode;
@@ -83,10 +83,12 @@ export function analyzeCode(code: string): CodeScan {
     boundNodes.add(nameNode.id);
   };
 
-  const declareSubtree = (subtree: Node | null): void => {
+      const declareSubtree = (subtree: Node | null): void => {
     if (!subtree) return;
     walkNamed(subtree, (n) => {
-      if (n.type === "identifier") declareName(n);
+      if (n.type === "identifier" || n.type === "shorthand_property_identifier_pattern") {
+        declareName(n);
+      }
     });
   };
 
@@ -127,7 +129,14 @@ export function analyzeCode(code: string): CodeScan {
         break;
       }
       case "function_declaration":
-      case "generator_function_declaration":
+      case "generator_function_declaration": {
+        // Bind the name AND the parameter subtree - declared-function params
+        // are ordinary locals (benchmark Suite A defect #1: `function
+        // helper(items)` flagged `items` as an unknown reference).
+        declareName(node.childForFieldName("name"));
+        declareSubtree(node.childForFieldName("parameters"));
+        break;
+      }
       case "class_declaration": {
         declareName(node.childForFieldName("name"));
         break;
@@ -138,8 +147,39 @@ export function analyzeCode(code: string): CodeScan {
         declareSubtree(node.childForFieldName("parameters"));
         break;
       }
+      case "for_of_statement":
+      case "for_in_statement":
+      case "for_statement": {
+        // Loop-head declarations (`for (const p of xs)`) are ordinary locals.
+        // tree-sitter-javascript gives for-in/of a bare identifier left child
+        // with NO field name, so the field lookup returns null - fall back to
+        // declaring every named child except the loop body (last child).
+        const left = node.childForFieldName("left");
+        if (left) {
+          declareSubtree(left);
+        } else {
+          // for-in/of: children[0] is the head binding (identifier or
+          // destructuring pattern); everything after it is the iterated
+          // expression (references stay references) and the body.
+          const head = node.namedChildren[0];
+          if (head) {
+            if (head.type === "identifier") declareName(head);
+            else if (head.type !== "statement_block") declareSubtree(head);
+          }
+        }
+        break;
+      }
       case "catch_clause": {
-        declareSubtree(node.childForFieldName("parameter"));
+        // tree-sitter-javascript exposes the catch binding as a plain
+        // identifier child without a field name, so childForFieldName(
+        // "parameter") returns null. Bind it directly (and any pattern
+        // subtree for destructuring catches) - benchmark Suite A defect #2:
+        // `catch (error)` flagged `error` as an unknown reference.
+        for (const child of node.namedChildren) {
+          if (child.type === "statement_block") continue;
+          if (child.type === "identifier") declareName(child);
+          else declareSubtree(child);
+        }
         break;
       }
       case "assignment_expression": {

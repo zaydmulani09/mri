@@ -161,6 +161,19 @@ function fileAllowed(files: Allowlist["files"], pathLike: string): boolean {
   const hasExtension = /\.[a-z]+$/i.test(lastSegment);
   if (!hasExtension) {
     candidates.push(`${pathLike}.js`, `${pathLike}.ts`, `${pathLike}/index.js`);
+  } else {
+    // ESM/TS convention: relative imports use the EMITTED extension (.js) while
+    // the graph stores SOURCE paths (.ts/.tsx). Map emitted -> source
+    // (benchmark Suite A defect #3: `import ... from './billing.js'` never
+    // matched graph path `src/billing.ts`).
+    const mapped = lastSegment
+      .replace(/\.js$/i, ".ts")
+      .replace(/\.mjs$/i, ".mts")
+      .replace(/\.cjs$/i, ".cts");
+    if (mapped !== lastSegment) {
+      candidates.push(pathLike.replace(/\.js$/i, ".ts").replace(/\.mjs$/i, ".mts").replace(/\.cjs$/i, ".cts"));
+      candidates.push(pathLike.replace(/\.js$/i, ".tsx").replace(/\.mjs$/i, ".mts").replace(/\.cjs$/i, ".cts"));
+    }
   }
   return candidates.some((candidate) =>
     files.some((f) => f.path === candidate || f.path.endsWith(`/${candidate}`)),
