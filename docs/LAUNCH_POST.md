@@ -38,8 +38,9 @@ That rule shows up downstream:
   symbols it lists both rather than picking one.
 
 On sindresorhus/got (85 files, 311 functions), `mri analyze` runs in about
-33 seconds and reports architecture, dead-code candidates, churn-based risk,
-and import-based coverage. The captured run is committed.
+3 seconds and reports architecture, dead-code candidates, churn-based risk,
+import-based coverage, and cyclomatic complexity. The captured run is
+committed.
 
 The second half is `mri guard <scope> <file>`: it derives a fail-closed
 allowlist from the graph — only what a scope provably touches — and runs
@@ -56,10 +57,11 @@ grants (a granted env var copied into a granted fetch is exfiltration
 working as configured), scan TypeScript or Python in the guard gate, or
 protect against a compromised host. The full list is in
 docs/THREAT_MODEL.md, and a 33-case adversarial benchmark with committed
-raw results is in examples/benchmark/. On the current build all 14 attack
-cases are blocked and 18 of 19 legitimate tasks execute; the one remaining
-block needs a real filesystem bridge that doesn't exist yet, not a scanner
-fix.
+raw results is in examples/benchmark/. On the current build Suite B's 14
+attack cases all fail closed — 10 BLOCKED outright, 4 EXECUTED but
+contained-by-construction with zero side effects — and 18 of 19 legitimate
+tasks execute; the one remaining block needs a real filesystem bridge that
+doesn't exist yet, not a scanner fix.
 
 Repo: https://github.com/zaydmulani09/mri
 
@@ -136,7 +138,7 @@ Harness, cases, and raw results: https://github.com/zaydmulani09/mri
 | --- | --- |
 | Languages: JS/TS, Python, Go, Rust | README.md; src/extraction/languages.ts |
 | Schema-level resolved/ambiguous split | src/graph/schema.ts (CHECK constraint) |
-| got: 85 files, 311 functions, ~33s | examples/reports/got-analysis.md (verbatim capture) |
+| got: 85 files, 311 functions, ~3s | examples/reports/got-analysis.md (verbatim capture); re-measured 2.9–3.0 s at the captured got commit `e3924aa` |
 | blast-radius confirmed vs ambiguous split | src/analysis/blast-radius.ts; got-analysis.md |
 | dead-code confidence labels | src/analysis/dead-code.ts; got-analysis.md |
 | ask "noop" two-symbol refusal | examples/recordings/ask-got.cast; got-analysis.md |

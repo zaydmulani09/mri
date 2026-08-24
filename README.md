@@ -20,7 +20,8 @@ with `asciinema play <file>` or read the `.txt` transcript alongside):
 - **[analyze-got.cast](examples/recordings/analyze-got.cast)** — `mri analyze`
   against [sindresorhus/got](https://github.com/sindresorhus/got): architecture,
   dead-code candidates, churn-based risk, import-based coverage — one command,
-  ~33 seconds.
+  ~3 s runtime (the recording itself runs longer; it includes typing and
+  scrolling).
 - **[ask-got.cast](examples/recordings/ask-got.cast)** — `mri ask` refusing to
   guess on an ambiguous name ("noop" matches two symbols), then answering
   "who calls calculateRetryDelay" and "what is the riskiest file" strictly from
