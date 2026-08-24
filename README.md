@@ -143,7 +143,12 @@ imports outside the scope's proven reachability block execution before it
 starts. Code that passes the gate runs inside an **isolated-vm V8 isolate** —
 a separate realm and heap with no host objects injected — so cross-realm
 escape attempts (the `.constructor.constructor` class from the adversarial
-benchmark) are structurally impossible rather than merely discouraged:
+benchmark) are structurally impossible rather than merely discouraged. The
+adversarial benchmark behind that claim, re-run after the isolate rewrite:
+18/19 legitimate tasks execute (the last is denied by design pending a real
+filesystem bridge) and every escape category fails closed, including the two
+cross-realm escapes that defeated the earlier node:vm backend —
+[examples/benchmark/ADVERSARIAL_REPORT.md](examples/benchmark/ADVERSARIAL_REPORT.md).
 
 ```bash
 npx mri guard fn:src/api.js#fetchUser snippet.js --path /path/to/repo
