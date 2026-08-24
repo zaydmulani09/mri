@@ -140,7 +140,10 @@ narrated by the model; otherwise the structured result is printed as-is.
 `mri guard` checks a code snippet against the fail-closed allowlist generated
 for any scope in the graph. Ungranted resources, unknown references, or
 imports outside the scope's proven reachability block execution before it
-starts:
+starts. Code that passes the gate runs inside an **isolated-vm V8 isolate** —
+a separate realm and heap with no host objects injected — so cross-realm
+escape attempts (the `.constructor.constructor` class from the adversarial
+benchmark) are structurally impossible rather than merely discouraged:
 
 ```bash
 npx mri guard fn:src/api.js#fetchUser snippet.js --path /path/to/repo

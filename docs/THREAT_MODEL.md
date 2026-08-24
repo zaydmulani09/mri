@@ -11,7 +11,10 @@
 >
 > Implementation status note: allowlist generation, the AST scanner, the
 > check-and-run interceptor, and the breach taxonomy are committed and wired
-> into the CLI as `mri guard <scope-id> <file>`. Fail-closed behavior is
+> into the CLI as `mri guard <scope-id> <file>`. Since the adversarial
+> benchmark, execution runs inside an isolated-vm V8 isolate (separate realm
+> and heap) instead of node:vm - see `src/guardrail/isolate-runner.ts` and
+> `examples/benchmark/ADVERSARIAL_REPORT.md`. Fail-closed behavior is
 > verified end-to-end against a real codebase (sindresorhus/got at mri
 > `40ba1d8`): ungranted imports are refused before anything executes, and
 > in-scope code runs against inert stubs — captured verbatim in
@@ -42,9 +45,9 @@
 │   └──────────────────┬───────────────────────────────────┘ │
 │                      │ only if zero breaches               │
 │   ┌──────────────────▼───────────────────────────────────┐ │
-│   │ GUARDED VM CONTEXT (node:vm)                         │ │
-│   │   null-prototype sandbox; require/process/fetch are  │ │
-│   │   host-built bridges that re-check grants at runtime │ │
+│   │ ISOLATED VM (isolated-vm, separate V8 isolate)        │ │
+│   │   own realm + heap; require/process/fetch bridges     │ │
+│   │   re-check grants host-side at every runtime call     │ │
 │   │ ┌──────────────────────────────────────────────────┐ │ │
 │   │ │ UNTRUSTED GENERATED CODE                         │ │ │
 │   │ └──────────────────────────────────────────────────┘ │ │
@@ -60,7 +63,13 @@ the allowlist file, and the graph database are inside the trust boundary:
 
 Each row names the mechanism and where it lives.
 
-1. **Capability overreach via imports.** `fs`, `child_process`, network
+1. **Cross-realm escapes.** Guest code runs in an isolated-vm V8 isolate:
+   a separate realm and heap with no host objects injected. The
+   `.constructor.constructor` host-realm escape class (benchmark b01/b02)
+   is structurally closed - the guest `Function` constructor compiles
+   in-isolate only, and `process` does not exist inside. Regression tests
+   pin both payloads in `tests/guardrail-interceptor.test.ts`.
+3. **Capability overreach via imports.** `fs`, `child_process`, network
    builtins (`http`, `https`, `net`, `dgram`, `dns`, `tls`) are classified
    (`classifyModuleSpecifier`) and allowed only if the corresponding
    resource category has at least one grant. Node builtins with **no**
@@ -70,22 +79,22 @@ Each row names the mechanism and where it lives.
    name, per mode (read/write), both statically and at runtime through a
    Proxy. `Object.keys(process.env)` and friends throw — enumeration is not
    permitted even for granted variables.
-3. **Unapproved network egress.** `fetch` requires a literal URL whose
+4. **Unapproved network egress.** `fetch` requires a literal URL whose
    host/port/protocol matches a network grant; re-checked at call time by
    the runtime bridge.
-4. **Evasion via indirection.** Dynamic imports (`import(expr)`),
+5. **Evasion via indirection.** Dynamic imports (`import(expr)`),
    non-literal `require()`, computed `fetch` URLs, and unnamed
    `process.env` access cannot be proven safe, so they are blocked as
    *unverifiable* rather than allowed.
-5. **Free identifiers.** Any identifier that is neither declared locally nor
+6. **Free identifiers.** Any identifier that is neither declared locally nor
    on a small safe-globals list nor explicitly granted produces an
    `unknown-reference` breach. The default posture is deny.
-6. **Unparseable code.** If the snippet does not parse, nothing executes.
-7. **Ambiguous graph edges at scoping time.** When the allowlist is
+7. **Unparseable code.** If the snippet does not parse, nothing executes.
+8. **Ambiguous graph edges at scoping time.** When the allowlist is
    generated from the code graph (`generateAllowlist`), only `resolved`
    edges produce grants. Ambiguous references are excluded from the
    allowlist and surfaced on its `unresolved` list for a human to resolve.
-8. **Runtime bypass attempts.** Even after passing the static gate, calls
+9. **Runtime bypass attempts.** Even after passing the static gate, calls
    through the bridged `require`/`process`/`fetch` surfaces re-verify grants
    at execution time. A wall-clock timeout (default 1000 ms) bounds runaway
    snippets.
@@ -105,13 +114,15 @@ this was blocked").
 
 Read this list as the honest price tag of the current design.
 
-1. **Zero-days in the sandbox runtime itself.** Execution uses Node's
-   `node:vm`. Node's own documentation is explicit that `vm` is **not** a
-   security mechanism. A V8 engine bug, an exotic sandbox escape chain, or a
-   hostile prototype-pollution gadget may break out entirely. There is no
-   OS-level isolation underneath (no containers, seccomp, jails, or separate
-   processes). Treat containment as policy enforcement, not a convicts-and-
-   walls guarantee.
+1. **Zero-days in the isolation layer itself.** Execution uses
+   `isolated-vm`: a separate V8 isolate per run, a fundamentally stronger
+   boundary than node:vm shared-realm contexts and the mechanism the
+   adversarial benchmark identified as the fix for the b01/b02 escapes.
+   That is still not a promise of perfection - a V8 or isolated-vm engine
+   bug may break out, the dependency is native and must stay current, and
+   there is **no OS-level isolation underneath** (no containers, seccomp,
+   or jails). Treat containment as strong policy enforcement, not a
+   convicts-and-walls guarantee.
 2. **Host-side compromise.** The guardrail runs in-process with the full
    privileges of the host. A compromised host, a malicious orchestrator, or
    a tampered allowlist/graph makes every guarantee void.
@@ -175,13 +186,16 @@ be treated as evidence.
 In dependency order, what would need to exist before "production security
 boundary" claims become defensible:
 
-1. OS-level isolation beneath the VM (container/jail/seccomp profile around
-   the host process).
-2. Memory/CPU caps alongside the wall-clock timeout.
-3. Data-flow awareness for grant combinations (env var → network pairing).
-4. TypeScript/Python scanning parity in the code gate.
-5. Independent security review and fuzzing of `code-scan.ts` and the bridge
-   surfaces.
+1. OS-level isolation beneath the isolate (container/jail/seccomp profile
+    around the host process).
+2. Data-flow awareness for grant combinations (env var to network pairing,
+    benchmark finding b06).
+3. TypeScript/Python scanning parity in the code gate (benchmark Suite A
+    false-block class).
+4. Independent security review and fuzzing of `code-scan.ts`, the isolate
+    bootstrap, and the bridge surfaces.
+5. Bridged real capabilities behind guarded require/fetch with the taint
+    rules from the benchmark, replacing today's inert-stub semantics.
 
 Until those land, the correct claim is the narrow one: **mri containment
 deterministically stops generated-code capability overreach that is visible
